@@ -44,7 +44,7 @@ def _build_expected_message(wallet_address: str) -> list[str]:
     block legitimate requests — the signature itself is the proof of ownership.
     """
     return [
-        f"0g Mem authentication\nWallet: {wallet_address}",
+        f"0g Mem authentication | Wallet: {wallet_address}",
     ]
 
 
@@ -61,10 +61,10 @@ def get_memory(
     private key never leaves the browser.
     """
     # --- Verify the MetaMask signature ---
-    if not message.startswith(f"0g Mem authentication\nWallet: {wallet_address}"):
+    if not message.startswith(f"0g Mem authentication | Wallet: {wallet_address}"):
         raise HTTPException(
             status_code=401,
-            detail="Message format invalid. Expected '0g Mem authentication\\nWallet: <address>\\nTimestamp: ...'",
+            detail="Message format invalid. Expected '0g Mem authentication | Wallet: <address> | Timestamp: ...'",
         )
     verify_signature(wallet_address, signature, message)
 
