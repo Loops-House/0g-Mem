@@ -14,7 +14,7 @@ interface MemoryFeedProps {
 
 export default function MemoryFeed({ agentId, refreshTrigger }: MemoryFeedProps) {
   const [state, setState] = useState<StateResponse | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -32,7 +32,9 @@ export default function MemoryFeed({ agentId, refreshTrigger }: MemoryFeedProps)
   }, [agentId]);
 
   useEffect(() => {
-    load();
+    if (refreshTrigger && refreshTrigger > 0) {
+      load();
+    }
   }, [load, refreshTrigger]);
 
   return (
@@ -53,6 +55,19 @@ export default function MemoryFeed({ agentId, refreshTrigger }: MemoryFeedProps)
         <p className="text-xs text-error bg-error/10 border border-error/20 rounded-lg px-3 py-2">
           {error}
         </p>
+      )}
+
+      {!state && !loading && !error && (
+        <div className="flex flex-col items-center justify-center py-8 text-center">
+          <Database className="w-8 h-8 text-muted mb-3" />
+          <p className="text-sm text-muted mb-3">Click to load chain state.</p>
+          <button
+            onClick={load}
+            className="text-xs bg-accent/10 hover:bg-accent/20 border border-accent/30 text-accent px-3 py-1.5 rounded-lg transition-colors"
+          >
+            Load State
+          </button>
+        </div>
       )}
 
       {loading && !state && (
