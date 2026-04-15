@@ -12,10 +12,19 @@ router = APIRouter(prefix="/nft", tags=["nft"])
 
 @router.post("/mint", response_model=MintResponse)
 def mint_nft(
-    x_private_key: Optional[str] = Header(default=None),
+    x_wallet_address: Optional[str] = Header(default=None),
+    x_signature: Optional[str] = Header(default=None),
+    x_auth_message: Optional[str] = Header(default=None),
 ):
     """Mint the caller's memory NFT on 0g Chain. One per wallet."""
-    memory = get_memory("nft-mint", x_private_key)
+    if not x_wallet_address:
+        raise HTTPException(status_code=401, detail="X-Wallet-Address header is required.")
+    if not x_signature:
+        raise HTTPException(status_code=401, detail="X-Signature header is required.")
+    if not x_auth_message:
+        raise HTTPException(status_code=401, detail="X-Auth-Message header is required.")
+
+    memory = get_memory(x_wallet_address, x_signature, x_auth_message)
     try:
         tx = memory.mint_memory_nft()
         token_id = memory.memory_token_id()

@@ -19,14 +19,31 @@ from ogmem.proof import QueryProof
 router = APIRouter(prefix="/memory", tags=["memory"])
 
 
+def _auth(
+    x_wallet_address: Optional[str],
+    x_signature: Optional[str],
+    x_auth_message: Optional[str],
+):
+    """Validate that all three auth headers are present and return the memory instance."""
+    if not x_wallet_address:
+        raise HTTPException(status_code=401, detail="X-Wallet-Address header is required.")
+    if not x_signature:
+        raise HTTPException(status_code=401, detail="X-Signature header is required.")
+    if not x_auth_message:
+        raise HTTPException(status_code=401, detail="X-Auth-Message header is required.")
+    return get_memory(x_wallet_address, x_signature, x_auth_message)
+
+
 @router.post("/{agent_id}/add", response_model=AddResponse)
 def add_memory(
     agent_id: str,
     body: AddRequest,
-    x_private_key: Optional[str] = Header(default=None),
+    x_wallet_address: Optional[str] = Header(default=None),
+    x_signature: Optional[str] = Header(default=None),
+    x_auth_message: Optional[str] = Header(default=None),
 ):
     """Write a memory entry to 0g Storage and anchor its Merkle root on-chain."""
-    memory = get_memory(agent_id, x_private_key)
+    memory = _auth(x_wallet_address, x_signature, x_auth_message)
     try:
         receipt = memory.add(body.text, body.metadata)
         return AddResponse(
@@ -46,10 +63,12 @@ def add_memory(
 def query_memory(
     agent_id: str,
     body: QueryRequest,
-    x_private_key: Optional[str] = Header(default=None),
+    x_wallet_address: Optional[str] = Header(default=None),
+    x_signature: Optional[str] = Header(default=None),
+    x_auth_message: Optional[str] = Header(default=None),
 ):
     """Semantic similarity search. Returns top-k results and a cryptographic proof."""
-    memory = get_memory(agent_id, x_private_key)
+    memory = _auth(x_wallet_address, x_signature, x_auth_message)
     try:
         results, proof = memory.query(body.text, top_k=body.top_k)
         return QueryResponse(results=results, proof=proof.__dict__)
@@ -60,10 +79,12 @@ def query_memory(
 @router.get("/{agent_id}/state", response_model=StateResponse)
 def get_state(
     agent_id: str,
-    x_private_key: Optional[str] = Header(default=None),
+    x_wallet_address: Optional[str] = Header(default=None),
+    x_signature: Optional[str] = Header(default=None),
+    x_auth_message: Optional[str] = Header(default=None),
 ):
     """Current Merkle root + chain state for an agent."""
-    memory = get_memory(agent_id, x_private_key)
+    memory = _auth(x_wallet_address, x_signature, x_auth_message)
     try:
         chain_state = memory._chain.get_latest_root(memory._chain.agent_address)
         token_id = memory.memory_token_id()
@@ -85,10 +106,12 @@ def get_audit(
     agent_id: str,
     from_block: int = 0,
     to_block: int = -1,
-    x_private_key: Optional[str] = Header(default=None),
+    x_wallet_address: Optional[str] = Header(default=None),
+    x_signature: Optional[str] = Header(default=None),
+    x_auth_message: Optional[str] = Header(default=None),
 ):
     """Full EU AI Act Article 12 compliant audit report (JSON)."""
-    memory = get_memory(agent_id, x_private_key)
+    memory = _auth(x_wallet_address, x_signature, x_auth_message)
     try:
         report = memory.export_audit(from_block=from_block, to_block=to_block)
         return json.loads(report.to_json())
@@ -100,10 +123,40 @@ def get_audit(
 def verify_proof(
     agent_id: str,
     body: VerifyRequest,
-    x_private_key: Optional[str] = Header(default=None),
+    x_wallet_address: Optional[str] = Header(default=None),
+    x_signature: Optional[str] = Header(default=None),
+    x_auth_message: Optional[str] = Header(default=None),
 ):
-    """Verify a QueryProof. Stateless — callable by any third party."""
-    memory = get_memory(agent_id, x_private_key)
+    """
+    Verify a QueryProof. Stateless — callable by any third party.
+    Auth headers are optional for verify; a public agent_id path param suffices
+    to look up the chain state. We still accept auth headers for consistency.
+    """
+    # For verify we allow unauthenticated access — proof verification is public.
+    # If auth headers are present we validate them; otherwise we use a read-only
+    # instantiation via AGENT_KEY with the provided agent_id.
+    if x_wallet_address and x_signature and x_auth_message:
+        memory = _auth(x_wallet_address, x_signature, x_auth_message)
+    else:
+        import os
+        from ogmem.memory import VerifiableMemory
+        from ogmem.config import NETWORKS
+        agent_key = os.environ.get("AGENT_KEY")
+        if not agent_key:
+            raise HTTPException(status_code=500, detail="AGENT_KEY not configured.")
+        net = NETWORKS["0g-testnet"]
+        memory = VerifiableMemory(
+            agent_id=agent_id,
+            private_key=agent_key,
+            network="0g-testnet",
+            registry_contract_address=os.environ.get(
+                "MEMORY_REGISTRY_ADDRESS", net.memory_registry_address
+            ),
+            nft_contract_address=os.environ.get(
+                "MEMORY_NFT_ADDRESS", net.memory_nft_address
+            ),
+            encrypted=True,
+        )
     try:
         proof = QueryProof(**body.proof)
         valid = memory.verify_proof(proof)
@@ -120,10 +173,12 @@ def verify_proof(
 def grant_access(
     agent_id: str,
     body: GrantRequest,
-    x_private_key: Optional[str] = Header(default=None),
+    x_wallet_address: Optional[str] = Header(default=None),
+    x_signature: Optional[str] = Header(default=None),
+    x_auth_message: Optional[str] = Header(default=None),
 ):
     """Grant an agent full or shard-level access to memory (on-chain)."""
-    memory = get_memory(agent_id, x_private_key)
+    memory = _auth(x_wallet_address, x_signature, x_auth_message)
     try:
         tx = memory.grant_access(
             body.agent_address,
@@ -142,10 +197,12 @@ def grant_access(
 def revoke_access(
     agent_id: str,
     body: RevokeRequest,
-    x_private_key: Optional[str] = Header(default=None),
+    x_wallet_address: Optional[str] = Header(default=None),
+    x_signature: Optional[str] = Header(default=None),
+    x_auth_message: Optional[str] = Header(default=None),
 ):
     """Revoke all access for an agent — effective immediately on-chain."""
-    memory = get_memory(agent_id, x_private_key)
+    memory = _auth(x_wallet_address, x_signature, x_auth_message)
     try:
         tx = memory.revoke_access(body.agent_address)
         return RevokeResponse(chain_tx_hash=tx, agent_address=body.agent_address)
