@@ -68,7 +68,7 @@ export default function AuditTimeline({ agentId }: AuditTimelineProps) {
         </div>
       )}
 
-      {report && report.entries.length === 0 && (
+      {report && report.operations.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <FileText className="w-10 h-10 text-muted mb-3" />
           <p className="text-sm text-muted">No audit entries yet.</p>
@@ -78,13 +78,13 @@ export default function AuditTimeline({ agentId }: AuditTimelineProps) {
         </div>
       )}
 
-      {report && report.entries.length > 0 && (
+      {report && report.operations.length > 0 && (
         <div className="relative">
           {/* Timeline line */}
           <div className="absolute left-5 top-0 bottom-0 w-px bg-border" />
 
           <div className="space-y-0">
-            {[...report.entries]
+            {[...report.operations]
               .sort((a, b) => b.timestamp - a.timestamp)
               .map((entry, i) => (
                 <AuditEntryRow key={i} entry={entry} />
@@ -97,7 +97,7 @@ export default function AuditTimeline({ agentId }: AuditTimelineProps) {
 }
 
 function AuditEntryRow({ entry }: { entry: AuditEntry }) {
-  const isWrite = entry.type === "write";
+  const isWrite = entry.op_type === "write";
 
   return (
     <div className="flex gap-4 pb-4 animate-fade-in">
@@ -111,9 +111,7 @@ function AuditEntryRow({ entry }: { entry: AuditEntry }) {
         )}
       >
         {isWrite ? (
-          <FileText
-            className={cn("w-4 h-4", isWrite ? "text-accent" : "text-blue-400")}
-          />
+          <FileText className="w-4 h-4 text-accent" />
         ) : (
           <Search className="w-4 h-4 text-blue-400" />
         )}
@@ -140,28 +138,38 @@ function AuditEntryRow({ entry }: { entry: AuditEntry }) {
         <div className="space-y-1.5 text-xs">
           {entry.blob_id && (
             <div className="flex items-center gap-2">
-              <span className="text-muted w-20 flex-shrink-0">Blob ID</span>
+              <span className="text-muted w-24 flex-shrink-0">Blob ID</span>
               <HashDisplay hash={entry.blob_id} chars={24} />
+            </div>
+          )}
+          {entry.content_preview && (
+            <div className="flex items-center gap-2">
+              <span className="text-muted w-24 flex-shrink-0">Content</span>
+              <span className="text-muted truncate">{entry.content_preview}</span>
             </div>
           )}
           {entry.query_hash && (
             <div className="flex items-center gap-2">
-              <span className="text-muted w-20 flex-shrink-0">Query Hash</span>
+              <span className="text-muted w-24 flex-shrink-0">Query Hash</span>
               <HashDisplay hash={entry.query_hash} chars={24} />
             </div>
           )}
-          <div className="flex items-center gap-2">
-            <span className="text-muted w-20 flex-shrink-0">Merkle Root</span>
-            <HashDisplay hash={entry.merkle_root} chars={24} />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-muted w-20 flex-shrink-0">DA Tx Hash</span>
-            <HashDisplay hash={entry.da_tx_hash} chars={24} />
-          </div>
-          {entry.block_number && (
+          {entry.query_preview && (
             <div className="flex items-center gap-2">
-              <span className="text-muted w-20 flex-shrink-0">Block</span>
-              <span className="font-mono text-muted">{entry.block_number}</span>
+              <span className="text-muted w-24 flex-shrink-0">Query</span>
+              <span className="text-muted truncate">{entry.query_preview}</span>
+            </div>
+          )}
+          {(entry.merkle_root || entry.merkle_root_used) && (
+            <div className="flex items-center gap-2">
+              <span className="text-muted w-24 flex-shrink-0">Merkle Root</span>
+              <HashDisplay hash={(entry.merkle_root || entry.merkle_root_used)!} chars={24} />
+            </div>
+          )}
+          {(entry.da_tx_hash || entry.da_read_tx) && (
+            <div className="flex items-center gap-2">
+              <span className="text-muted w-24 flex-shrink-0">DA Tx</span>
+              <HashDisplay hash={(entry.da_tx_hash || entry.da_read_tx)!} chars={24} />
             </div>
           )}
         </div>

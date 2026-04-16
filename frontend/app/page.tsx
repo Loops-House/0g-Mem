@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useAccount } from "wagmi";
 import { useConnect } from "wagmi";
-import { metaMask } from "wagmi/connectors";
+import { injected } from "wagmi/connectors";
 import { ShieldCheck, Lock, User, ArrowRight, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -76,7 +76,7 @@ export default function LandingPage() {
             </Link>
           ) : (
             <button
-              onClick={() => connect({ connector: metaMask() })}
+              onClick={() => connect({ connector: injected() })}
               disabled={isPending}
               className={cn(
                 "flex items-center gap-2 px-6 py-3 rounded-xl text-base font-semibold",
@@ -125,6 +125,51 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* Pluggable SDK section */}
+      <section className="space-y-6">
+        <div className="text-center space-y-2">
+          <h2 className="text-2xl font-semibold text-white">Drop-in memory for any AI agent</h2>
+          <p className="text-sm text-muted max-w-xl mx-auto">
+            Plug 0g Mem into LangChain, AutoGPT, or any custom agent in three lines of code.
+          </p>
+        </div>
+        <div className="bg-surface border border-border rounded-xl overflow-hidden">
+          <div className="flex items-center gap-2 px-4 py-2.5 border-b border-border bg-surface-raised">
+            <span className="w-3 h-3 rounded-full bg-red-500/60" />
+            <span className="w-3 h-3 rounded-full bg-yellow-500/60" />
+            <span className="w-3 h-3 rounded-full bg-green-500/60" />
+            <span className="text-xs text-muted ml-2 font-mono">agent.py</span>
+          </div>
+          <pre className="px-6 py-5 text-sm font-mono leading-relaxed overflow-x-auto">
+            <code>
+              <span className="text-blue-400">from</span>
+              <span className="text-white"> ogmem </span>
+              <span className="text-blue-400">import</span>
+              <span className="text-white"> VerifiableMemory{"\n\n"}</span>
+              <span className="text-green-400"># Plug into any agent — wallet address = agent ID{"\n"}</span>
+              <span className="text-white">memory = VerifiableMemory(agent_id=</span>
+              <span className="text-yellow-300">&quot;0xYourWallet&quot;</span>
+              <span className="text-white">, network=</span>
+              <span className="text-yellow-300">&quot;0g-testnet&quot;</span>
+              <span className="text-white">){"\n\n"}</span>
+              <span className="text-green-400"># Store encrypted memory on 0g DA{"\n"}</span>
+              <span className="text-white">memory.add(</span>
+              <span className="text-yellow-300">&quot;The user prefers dark mode&quot;</span>
+              <span className="text-white">){"\n\n"}</span>
+              <span className="text-green-400"># Query with cryptographic proof{"\n"}</span>
+              <span className="text-white">results, proof = memory.query(</span>
+              <span className="text-yellow-300">&quot;user preferences&quot;</span>
+              <span className="text-white">, top_k=</span>
+              <span className="text-accent">3</span>
+              <span className="text-white">){"\n\n"}</span>
+              <span className="text-green-400"># Anyone can verify on 0g Chain{"\n"}</span>
+              <span className="text-white">memory.verify_proof(proof)  </span>
+              <span className="text-green-400"># True</span>
+            </code>
+          </pre>
+        </div>
+      </section>
+
       {/* How it works */}
       <section className="space-y-8">
         <h2 className="text-2xl font-semibold text-white text-center">How it works</h2>
@@ -162,7 +207,7 @@ export default function LandingPage() {
             </Link>
           ) : (
             <button
-              onClick={() => connect({ connector: metaMask() })}
+              onClick={() => connect({ connector: injected() })}
               disabled={isPending}
               className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold bg-accent hover:bg-accent-hover text-white transition-all disabled:opacity-50"
             >

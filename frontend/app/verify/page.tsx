@@ -8,16 +8,15 @@ import { cn } from "@/lib/utils";
 
 const PLACEHOLDER = JSON.stringify(
   {
-    query_hash: "0x...",
-    merkle_root: "0x...",
-    results_hash: "0x...",
-    da_tx_hash: "0x...",
-    chain_tx_hash: "0x...",
-    block_number: 123456,
-    timestamp: 1744756800,
     agent_id: "0x...",
-    top_k: 3,
-    verified: false,
+    query_hash: "0x...",
+    blob_ids: [],
+    scores: [],
+    merkle_proofs: [],
+    merkle_root: "0x...",
+    da_read_tx: "0x...",
+    chain_block: 123456,
+    timestamp: 1744756800,
   },
   null,
   2

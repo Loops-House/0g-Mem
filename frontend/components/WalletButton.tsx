@@ -1,21 +1,41 @@
 "use client";
 
-import { useAccount, useConnect, useDisconnect } from "wagmi";
-import { metaMask } from "wagmi/connectors";
-import { Wallet, LogOut, ChevronDown } from "lucide-react";
+import { useAccount, useConnect, useDisconnect, useChainId, useSwitchChain } from "wagmi";
+import { injected } from "wagmi/connectors";
+import { Wallet, LogOut, ChevronDown, AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { cn, truncateHash } from "@/lib/utils";
+import { zgGalileo } from "@/lib/wagmi";
 
 export default function WalletButton() {
   const { address, isConnected } = useAccount();
   const { connect, isPending } = useConnect();
   const { disconnect } = useDisconnect();
+  const chainId = useChainId();
+  const { switchChain } = useSwitchChain();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const isWrongNetwork = isConnected && chainId !== zgGalileo.id;
+
+  if (isWrongNetwork) {
+    return (
+      <button
+        onClick={() => switchChain({ chainId: zgGalileo.id })}
+        className={cn(
+          "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all",
+          "bg-yellow-500/20 border border-yellow-500/50 hover:bg-yellow-500/30 text-yellow-400"
+        )}
+      >
+        <AlertTriangle className="w-4 h-4" />
+        Switch to 0g Testnet
+      </button>
+    );
+  }
 
   if (!isConnected) {
     return (
       <button
-        onClick={() => connect({ connector: metaMask() })}
+        onClick={() => connect({ connector: injected() })}
         disabled={isPending}
         className={cn(
           "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all",

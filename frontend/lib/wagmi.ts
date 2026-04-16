@@ -1,15 +1,29 @@
 import { http, createConfig } from "wagmi";
-import { mainnet, sepolia } from "wagmi/chains";
+import { defineChain } from "viem";
 import { injected } from "wagmi/connectors";
 
+// 0g Galileo Testnet (v3) — chain_id 16602
+export const zgGalileo = defineChain({
+  id: 16602,
+  name: "0g Galileo Testnet",
+  nativeCurrency: { name: "A0GI", symbol: "A0GI", decimals: 18 },
+  rpcUrls: {
+    default: { http: ["https://evmrpc-testnet.0g.ai"] },
+  },
+  blockExplorers: {
+    default: {
+      name: "0g Explorer",
+      url: "https://chainscan-galileo.0g.ai",
+    },
+  },
+  testnet: true,
+});
+
 export const wagmiConfig = createConfig({
-  chains: [mainnet, sepolia],
-  connectors: [
-    injected(),
-  ],
+  chains: [zgGalileo],
+  connectors: [injected()],
   transports: {
-    [mainnet.id]: http(),
-    [sepolia.id]: http(),
+    [zgGalileo.id]: http(),
   },
   ssr: true,
 });

@@ -6,9 +6,6 @@
  * to produce a signature that proves wallet ownership.
  */
 
-import { signMessage } from "wagmi/actions";
-import { wagmiConfig } from "./wagmi";
-
 export interface AuthHeaders {
   "X-Wallet-Address": string;
   "X-Signature": string;
@@ -25,12 +22,18 @@ export function buildAuthMessage(walletAddress: string): string {
 }
 
 /**
- * Sign the auth message with MetaMask and return the three headers needed
- * by every authenticated API call.
+ * Sign the auth message via window.ethereum directly (bypasses wagmi's
+ * chain-match validation, which is irrelevant for message signing).
  */
 export async function getAuthHeaders(walletAddress: string): Promise<AuthHeaders> {
   const message = buildAuthMessage(walletAddress);
-  const signature = await signMessage(wagmiConfig, { message });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ethereum = (window as any).ethereum;
+  if (!ethereum) throw new Error("No wallet detected. Please install MetaMask.");
+  const signature = await ethereum.request({
+    method: "personal_sign",
+    params: [message, walletAddress],
+  });
   return {
     "X-Wallet-Address": walletAddress,
     "X-Signature": signature,

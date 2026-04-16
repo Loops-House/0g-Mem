@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Search, Loader2, ChevronDown } from "lucide-react";
+import { Search, Loader2, ChevronDown, Copy, Check } from "lucide-react";
 import { queryMemory, QueryResponse } from "@/lib/api";
 import { getAuthHeaders } from "@/lib/auth";
 import ProofCard from "./ProofCard";
@@ -20,6 +20,14 @@ export default function QueryForm({ agentId }: QueryFormProps) {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<QueryResponse | null>(null);
   const [showProof, setShowProof] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyProof = () => {
+    if (!result?.proof) return;
+    navigator.clipboard.writeText(JSON.stringify(result.proof, null, 2));
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,18 +133,30 @@ export default function QueryForm({ agentId }: QueryFormProps) {
 
           {result.proof && (
             <div>
-              <button
-                onClick={() => setShowProof((p) => !p)}
-                className="text-xs text-accent hover:underline flex items-center gap-1"
-              >
-                <ChevronDown
-                  className={cn(
-                    "w-3.5 h-3.5 transition-transform",
-                    showProof && "rotate-180"
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => setShowProof((p) => !p)}
+                  className="text-xs text-accent hover:underline flex items-center gap-1"
+                >
+                  <ChevronDown
+                    className={cn(
+                      "w-3.5 h-3.5 transition-transform",
+                      showProof && "rotate-180"
+                    )}
+                  />
+                  {showProof ? "Hide" : "Show"} cryptographic proof
+                </button>
+                <button
+                  onClick={handleCopyProof}
+                  className="flex items-center gap-1 text-xs text-muted hover:text-white transition-colors"
+                >
+                  {copied ? (
+                    <><Check className="w-3.5 h-3.5 text-success" /> Copied!</>
+                  ) : (
+                    <><Copy className="w-3.5 h-3.5" /> Copy proof JSON</>
                   )}
-                />
-                {showProof ? "Hide" : "Show"} cryptographic proof
-              </button>
+                </button>
+              </div>
               {showProof && (
                 <div className="mt-2">
                   <ProofCard proof={result.proof} />

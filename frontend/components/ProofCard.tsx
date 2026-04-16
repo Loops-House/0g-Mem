@@ -53,24 +53,16 @@ export default function ProofCard({ proof, verified }: ProofCardProps) {
           <HashDisplay hash={proof.merkle_root} chars={22} />
         </div>
         <div className={ROW_CLASSES}>
-          <span className={LABEL_CLASSES}>Results Hash</span>
-          <HashDisplay hash={proof.results_hash} chars={22} />
+          <span className={LABEL_CLASSES}>DA Read Tx</span>
+          <HashDisplay hash={proof.da_read_tx} chars={22} />
         </div>
         <div className={ROW_CLASSES}>
-          <span className={LABEL_CLASSES}>DA Tx Hash</span>
-          <HashDisplay hash={proof.da_tx_hash} chars={22} />
+          <span className={LABEL_CLASSES}>Chain Block</span>
+          <span className="text-sm text-muted font-mono">{proof.chain_block ?? "—"}</span>
         </div>
         <div className={ROW_CLASSES}>
-          <span className={LABEL_CLASSES}>Chain Tx Hash</span>
-          <HashDisplay hash={proof.chain_tx_hash} chars={22} />
-        </div>
-        <div className={ROW_CLASSES}>
-          <span className={LABEL_CLASSES}>Block Number</span>
-          <span className="text-sm text-muted font-mono">{proof.block_number ?? "—"}</span>
-        </div>
-        <div className={ROW_CLASSES}>
-          <span className={LABEL_CLASSES}>Top K</span>
-          <span className="text-sm text-muted">{proof.top_k}</span>
+          <span className={LABEL_CLASSES}>Blobs Retrieved</span>
+          <span className="text-sm text-muted">{proof.blob_ids?.length ?? 0}</span>
         </div>
         <div className={ROW_CLASSES}>
           <span className={LABEL_CLASSES}>Timestamp</span>

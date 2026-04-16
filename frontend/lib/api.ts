@@ -26,16 +26,16 @@ export interface QueryResult {
 }
 
 export interface QueryProof {
-  query_hash: string;
-  merkle_root: string;
-  results_hash: string;
-  da_tx_hash: string;
-  chain_tx_hash: string;
-  block_number: number;
-  timestamp: number;
   agent_id: string;
-  top_k: number;
-  verified: boolean;
+  query_hash: string;
+  blob_ids: string[];
+  scores: number[];
+  merkle_proofs: Record<string, unknown>[];
+  merkle_root: string;
+  da_read_tx: string;
+  chain_block: number;
+  timestamp: number;
+  verified?: boolean;
 }
 
 export interface QueryResponse {
@@ -54,20 +54,26 @@ export interface StateResponse {
 }
 
 export interface AuditEntry {
-  type: "write" | "read";
+  op_type: "write" | "read";
   timestamp: number;
+  agent_id: string;
   blob_id?: string;
-  query_hash?: string;
-  merkle_root: string;
-  da_tx_hash: string;
+  content_preview?: string;
+  merkle_root?: string;
+  da_tx_hash?: string;
   chain_tx_hash?: string;
-  block_number: number;
+  query_hash?: string;
+  query_preview?: string;
+  retrieved_blob_ids?: string[];
+  similarity_scores?: number[];
+  da_read_tx?: string;
+  merkle_root_used?: string;
 }
 
 export interface AuditReport {
   agent_id: string;
   generated_at: number;
-  entries: AuditEntry[];
+  operations: AuditEntry[];
   total_writes: number;
   total_reads: number;
 }
