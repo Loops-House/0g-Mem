@@ -1,22 +1,26 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 type FormData = {
   name: string
   email: string
-  role: string
-  framework: string
-  pain_point: string
+  role: string[]
+  framework: string[]
+  pain_point: string[]
+  priority: string
+  data_sharing: string
   would_pay: string
 }
 
 const INITIAL: FormData = {
   name: '',
   email: '',
-  role: '',
-  framework: '',
-  pain_point: '',
+  role: [],
+  framework: [],
+  pain_point: [],
+  priority: '',
+  data_sharing: '',
   would_pay: '',
 }
 
@@ -32,37 +36,80 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   )
 }
 
-function Select({
+function MultiSelect({
   value,
   onChange,
   options,
   placeholder,
 }: {
-  value: string
-  onChange: (v: string) => void
+  value: string[]
+  onChange: (v: string[]) => void
   options: { value: string; label: string }[]
   placeholder: string
 }) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [])
+
+  const toggle = (v: string) => {
+    onChange(value.includes(v) ? value.filter((x) => x !== v) : [...value, v])
+  }
+
+  const displayLabel =
+    value.length === 0
+      ? placeholder
+      : options
+          .filter((o) => value.includes(o.value))
+          .map((o) => o.label)
+          .join(', ')
+
   return (
-    <div className="relative">
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={inputClass + ' cursor-pointer pr-8 appearance-none'}
-        style={{ color: value ? '#ffffff' : '#888' }}
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className={inputClass + ' cursor-pointer text-left flex items-center justify-between'}
+        style={{ color: value.length ? '#ffffff' : '#888' }}
       >
-        <option value="" disabled style={{ background: '#1a1a1a', color: '#666' }}>
-          {placeholder}
-        </option>
-        {options.map((o) => (
-          <option key={o.value} value={o.value} style={{ background: '#1a1a1a', color: '#fff' }}>
-            {o.label}
-          </option>
-        ))}
-      </select>
-      <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 text-[#555] text-[10px]">
-        ▾
-      </span>
+        <span className="truncate pr-2">{displayLabel}</span>
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" className="shrink-0 text-[#555]"><path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+      </button>
+
+      {open && (
+        <div className="absolute z-10 top-full mt-1 w-full bg-[#1a1a1a] border border-[#333] rounded-lg overflow-hidden shadow-xl">
+          {options.map((o) => {
+            const selected = value.includes(o.value)
+            return (
+              <button
+                key={o.value}
+                type="button"
+                onClick={() => toggle(o.value)}
+                className="w-full flex items-center gap-3 px-4 py-2.5 text-[13px] text-left hover:bg-[#252525] transition-colors duration-100"
+              >
+                <span
+                  className={`w-4 h-4 rounded shrink-0 border flex items-center justify-center transition-colors duration-100 ${
+                    selected ? 'bg-white border-white' : 'border-[#444]'
+                  }`}
+                >
+                  {selected && (
+                    <svg width="9" height="7" viewBox="0 0 9 7" fill="none">
+                      <path d="M1 3.5L3.5 6L8 1" stroke="#000" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </span>
+                <span className={selected ? 'text-white' : 'text-[#999]'}>{o.label}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
@@ -77,7 +124,7 @@ function RadioGroup({
   options: { value: string; label: string }[]
 }) {
   return (
-    <div className="flex gap-2">
+    <div className="flex flex-wrap gap-2">
       {options.map((o) => (
         <button
           key={o.value}
@@ -99,7 +146,7 @@ function RadioGroup({
 function SuccessState({ name }: { name: string }) {
   const first = name ? name.split(' ')[0] : null
   return (
-    <div className="py-6">
+    <div>
       <p className="text-[17px] text-white font-medium mb-2 tracking-tight">
         {first ? `You're on the list, ${first}.` : "You're on the list."}
       </p>
@@ -126,19 +173,22 @@ export default function WaitlistForm() {
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
 
-  const set = (field: keyof FormData) => (value: string) =>
-    setForm((f) => ({ ...f, [field]: value }))
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setStatus('loading')
     setErrorMsg('')
 
     try {
+      const payload = {
+        ...form,
+        role: form.role.join(', '),
+        framework: form.framework.join(', '),
+        pain_point: form.pain_point.join(', '),
+      }
       const res = await fetch('/api/waitlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(form),
+        body: JSON.stringify(payload),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Something went wrong')
@@ -161,7 +211,7 @@ export default function WaitlistForm() {
             type="text"
             placeholder="Your name"
             value={form.name}
-            onChange={(e) => set('name')(e.target.value)}
+            onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
             className={inputClass}
           />
         </Field>
@@ -170,7 +220,7 @@ export default function WaitlistForm() {
             type="email"
             placeholder="you@example.com"
             value={form.email}
-            onChange={(e) => set('email')(e.target.value)}
+            onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
             required
             className={inputClass}
           />
@@ -179,10 +229,10 @@ export default function WaitlistForm() {
 
       <div className="grid grid-cols-2 gap-3">
         <Field label="Role">
-          <Select
+          <MultiSelect
             value={form.role}
-            onChange={set('role')}
-            placeholder="Select"
+            onChange={(v) => setForm((f) => ({ ...f, role: v }))}
+            placeholder="Select one or more"
             options={[
               { value: 'developer', label: 'Developer' },
               { value: 'founder', label: 'Founder' },
@@ -192,11 +242,11 @@ export default function WaitlistForm() {
             ]}
           />
         </Field>
-        <Field label="Framework">
-          <Select
+        <Field label="What do you build with?">
+          <MultiSelect
             value={form.framework}
-            onChange={set('framework')}
-            placeholder="Select"
+            onChange={(v) => setForm((f) => ({ ...f, framework: v }))}
+            placeholder="Select one or more"
             options={[
               { value: 'langchain', label: 'LangChain' },
               { value: 'autogen', label: 'AutoGen' },
@@ -209,24 +259,54 @@ export default function WaitlistForm() {
         </Field>
       </div>
 
-      <Field label="Biggest frustration with AI agent memory">
-        <textarea
-          placeholder="What can't you do today?"
+      <Field label="Biggest frustrations with AI agent memory">
+        <MultiSelect
           value={form.pain_point}
-          onChange={(e) => set('pain_point')(e.target.value)}
-          rows={3}
-          className={inputClass + ' resize-none'}
+          onChange={(v) => setForm((f) => ({ ...f, pain_point: v }))}
+          placeholder="Select all that apply →"
+          options={[
+            { value: 'no_persistence', label: "Memory doesn't persist across sessions" },
+            { value: 'no_control', label: 'No control over what gets remembered' },
+            { value: 'not_portable', label: "Can't use memory across different agents" },
+            { value: 'provider_owned', label: 'Memory is stored by the provider, not me' },
+            { value: 'no_verification', label: "Can't verify what's actually in memory" },
+            { value: 'no_sharing', label: "Can't selectively share memory with agents" },
+            { value: 'gets_stale', label: 'Memory gets outdated or irrelevant' },
+          ]}
+        />
+      </Field>
+
+      <Field label="What matters most to you?">
+        <RadioGroup
+          value={form.priority}
+          onChange={(v) => setForm((f) => ({ ...f, priority: v }))}
+          options={[
+            { value: 'control', label: 'Complete control over my memory' },
+            { value: 'portable', label: 'Pluggable across any agent or framework' },
+          ]}
         />
       </Field>
 
       <Field label="Would you use a paid version?">
         <RadioGroup
           value={form.would_pay}
-          onChange={set('would_pay')}
+          onChange={(v) => setForm((f) => ({ ...f, would_pay: v }))}
           options={[
             { value: 'yes', label: 'Yes' },
             { value: 'maybe', label: 'Maybe' },
             { value: 'no', label: 'No' },
+          ]}
+        />
+      </Field>
+
+      <Field label="Does it concern you that cloud AI memory providers store and can access your agent's data?">
+        <RadioGroup
+          value={form.data_sharing}
+          onChange={(v) => setForm((f) => ({ ...f, data_sharing: v }))}
+          options={[
+            { value: 'yes', label: 'Yes' },
+            { value: 'somewhat', label: 'Somewhat' },
+            { value: 'not_really', label: 'Not really' },
           ]}
         />
       </Field>
