@@ -114,7 +114,7 @@ export default function DeployPage() {
   const allDone = step1Done && step2Done && step3Done;
 
   const railwayUrl = allDone
-    ? `https://railway.app/new/template?template=https://github.com/YOUR_USERNAME/0g-mem` +
+    ? `https://railway.app/new/template?template=https://github.com/violinadoley/0g-Mem` +
       `&envs=AGENT_KEY,TELEGRAM_BOT_TOKEN,ZEROG_SERVICE_URL,ZEROG_API_KEY,ZEROG_MODEL,MEMORY_REGISTRY_ADDRESS,MEMORY_NFT_ADDRESS` +
       `&AGENT_KEYDesc=Your+0G+wallet+private+key` +
       `&TELEGRAM_BOT_TOKENDesc=Token+from+BotFather` +
