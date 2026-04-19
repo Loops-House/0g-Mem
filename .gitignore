@@ -34,3 +34,4 @@ audit_report.json
 
 # OS
 .DS_Store
+.next/

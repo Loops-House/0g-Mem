@@ -11,6 +11,7 @@ const NAV_LINKS = [
   { href: "/audit", label: "Audit" },
   { href: "/access", label: "Access" },
   { href: "/verify", label: "Verify" },
+  { href: "/deploy", label: "Deploy" },
 ];
 
 export default function Navbar() {
@@ -50,19 +51,32 @@ export default function Navbar() {
           </div>
         )}
 
-        {/* Verify is always accessible */}
+        {/* Verify + Deploy always accessible (entry points for new users) */}
         {!isConnected && (
-          <Link
-            href="/verify"
-            className={cn(
-              "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
-              pathname === "/verify"
-                ? "bg-accent/10 text-accent"
-                : "text-muted hover:text-white hover:bg-surface-raised"
-            )}
-          >
-            Verify Proof
-          </Link>
+          <div className="hidden sm:flex items-center gap-1">
+            <Link
+              href="/verify"
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
+                pathname === "/verify"
+                  ? "bg-accent/10 text-accent"
+                  : "text-muted hover:text-white hover:bg-surface-raised"
+              )}
+            >
+              Verify Proof
+            </Link>
+            <Link
+              href="/deploy"
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-sm font-medium transition-colors",
+                pathname === "/deploy"
+                  ? "bg-accent/10 text-accent"
+                  : "text-accent hover:bg-accent/10"
+              )}
+            >
+              Deploy →
+            </Link>
+          </div>
         )}
 
         <WalletButton />

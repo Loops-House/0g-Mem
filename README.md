@@ -116,7 +116,19 @@ hasAccess(address owner, address agent, bytes32 blobId) → bool
 
 ---
 
-## Quickstart
+## One-click deploy (Telegram bot)
+
+The fastest way to try 0G Mem — deploy your own Telegram bot with verifiable memory in under 5 minutes.
+
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new/template?template=https://github.com/violinadoley/0g-Mem&envs=AGENT_KEY,TELEGRAM_BOT_TOKEN,ZEROG_SERVICE_URL,ZEROG_API_KEY,ZEROG_MODEL,MEMORY_REGISTRY_ADDRESS,MEMORY_NFT_ADDRESS&AGENT_KEYDesc=Your+0G+wallet+private+key&TELEGRAM_BOT_TOKENDesc=Token+from+BotFather&ZEROG_SERVICE_URLDesc=0G+Compute+provider+URL&ZEROG_API_KEYDesc=0G+Compute+API+key&ZEROG_MODELDesc=Model+name&ZEROG_MODELDefault=qwen/qwen-2.5-7b-instruct&MEMORY_REGISTRY_ADDRESSDefault=0xEDF95D9CFb157F5F38C1125B7DFB3968E05d2c4b&MEMORY_NFT_ADDRESSDefault=0x70ad85300f522A41689954a4153744BF6E57E488)
+
+Or follow the **[guided onboarding →](https://your-frontend-url/deploy)** (step-by-step: wallet connect → BotFather → 0G Compute → deploy).
+
+Each user deploys their own instance — you are the operator and the user. Your `AGENT_KEY` controls your memory. Nobody else has custody.
+
+---
+
+## Quickstart (SDK)
 
 ```bash
 git clone https://github.com/violinadoley/0g-Mem
@@ -276,7 +288,14 @@ api/                # FastAPI REST server
   routes/nft.py     # NFT mint endpoint
 
 frontend/           # Next.js 14 dashboard (wagmi + viem)
+  app/deploy/       # One-click onboarding page
 waitlist/           # Next.js 14 waitlist site (Supabase + Resend)
+telegram_bot/       # Telegram bot (python-telegram-bot)
+runtime/            # AgentRuntime + built-in tools
+tui/                # Terminal UI (Textual)
+Dockerfile.bot      # Docker image for Telegram bot deploy
+railway.toml        # Railway one-click deploy config
+render.yaml         # Render one-click deploy config
 tests/              # 43+ pytest tests (mock clients, no network required)
 examples/           # legal_assistant.py demo
 docs/               # Architecture + pitch docs
@@ -286,10 +305,10 @@ docs/               # Architecture + pitch docs
 
 ## What's next
 
-- **0G Compute integration** — route inference through 0G Compute Network for decentralised, verifiable inference. 0G Mem (memory) + 0G Compute (inference) = a fully trustless agent runtime where no single party controls agent state or execution.
 - **TypeScript/JS SDK** — mirror of Python SDK for frontend-native agents
 - **ZK proofs** — replace Merkle proofs with ZK proofs for private verification
 - **Multi-agent coordination** — shared verifiable memory across agent swarms
+- **Group Telegram bots** — shared memory for team agents with per-member access grants
 
 ---
 
