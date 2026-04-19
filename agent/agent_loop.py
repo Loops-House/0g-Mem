@@ -5,6 +5,21 @@ Every message goes through:
   2. 0g Compute inference (with fallback chain)
   3. ReAct tool-calling loop
   4. Session end → memory team commits, DA logs the full trace
+
+Inference uses the 0g Compute Network. Two options:
+
+  OPTION A — Local proxy (recommended for demo):
+    1. Install: pnpm add @0glabs/0g-serving-broker -g
+    2. Serve locally: 0g-compute-cli inference serve --provider <PROVIDER_ADDR> --port 3000
+    3. Set env: OG_COMPUTE_LOCAL_PROXY=http://localhost:3000
+
+  OPTION B — Direct API key:
+    1. Get secret: 0g-compute-cli inference get-secret --provider <PROVIDER_ADDR>
+    2. Get service URL from: 0g-compute-cli inference list-providers
+    3. Set env: OG_COMPUTE_API_KEY=app-sk-... and OG_COMPUTE_SERVICE_URL=https://...
+
+  Fallbacks (tried in order if 0g is unavailable):
+    1. OpenAI (if OPENAI_API_KEY is set)
 """
 
 from __future__ import annotations
@@ -13,6 +28,7 @@ import asyncio
 import json
 import logging
 import os
+import subprocess
 import time
 from dataclasses import dataclass, field
 from typing import Any, Literal, Optional
@@ -32,9 +48,9 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class InferenceConfig:
-    """Configuration for the 0g Compute inference endpoint."""
-    base_url: str = "https://broker-testnet.0g.ai"
-    model: str = "meta-llama/Llama-3-70b-chat-hf"
+    """Configuration for an inference endpoint (0g Compute, OpenAI, etc.)."""
+    base_url: str       # e.g. "http://localhost:3000" or "https://api.openai.com/v1"
+    model: str          # e.g. "qwen-2.5-7b-instruct" or "gpt-4o-mini"
     api_key: Optional[str] = None
     timeout_seconds: int = 120
 
@@ -49,23 +65,28 @@ class InferenceResult:
 
 class InferenceClient:
     """
-    Calls 0g Compute (OpenAI-compatible API) with fallback to Zhipu AI and OpenAI.
+    Calls 0g Compute (via local proxy or direct API key) with OpenAI fallback.
+
+    0g Compute is the primary inference backend — it's decentralized, TEE-verified,
+    and fits the "every component runs on 0g" architecture story.
+
+    Two 0g setup options:
+      A) Local proxy: 0g-compute-cli inference serve --provider <ADDR>
+         → sets OG_COMPUTE_LOCAL_PROXY=http://localhost:3000
+      B) Direct API key: 0g-compute-cli inference get-secret --provider <ADDR>
+         → sets OG_COMPUTE_API_KEY=app-sk-... + OG_COMPUTE_SERVICE_URL=https://...
     """
 
+    # 0g testnet chatbot model
+    OG_MODEL = "qwen-2.5-7b-instruct"
+
     def __init__(self, config: InferenceConfig | None = None):
-        self.config = config or InferenceConfig()
+        self._primary_config = config  # set if 0g is configured
         self._fallbacks: list[InferenceConfig] = self._build_fallbacks()
 
     def _build_fallbacks(self) -> list[InferenceConfig]:
         fallbacks = []
-        # Zhipu AI fallback
-        zhipu_key = os.environ.get("ZHIPU_API_KEY")
-        if zhipu_key:
-            fallbacks.append(InferenceConfig(
-                base_url="https://open.bigmodel.cn/api/paas/v4",
-                model="glm-4",
-                api_key=zhipu_key,
-            ))
+
         # OpenAI fallback
         openai_key = os.environ.get("OPENAI_API_KEY")
         if openai_key:
@@ -74,7 +95,35 @@ class InferenceClient:
                 model="gpt-4o-mini",
                 api_key=openai_key,
             ))
+
         return fallbacks
+
+    def _get_0g_config(self) -> Optional[InferenceConfig]:
+        """
+        Build an InferenceConfig for 0g Compute.
+
+        Checks two env var patterns:
+          1. OG_COMPUTE_LOCAL_PROXY  — local CLI proxy (e.g. http://localhost:3000)
+          2. OG_COMPUTE_SERVICE_URL + OG_COMPUTE_API_KEY — direct API key access
+        """
+        local_proxy = os.environ.get("OG_COMPUTE_LOCAL_PROXY", "").strip()
+        if local_proxy:
+            return InferenceConfig(
+                base_url=local_proxy,
+                model=self.OG_MODEL,
+                api_key=None,  # local proxy needs no auth
+            )
+
+        service_url = os.environ.get("OG_COMPUTE_SERVICE_URL", "").strip()
+        api_key = os.environ.get("OG_COMPUTE_API_KEY", "").strip()
+        if service_url and api_key:
+            return InferenceConfig(
+                base_url=f"{service_url}/v1/proxy",
+                model=self.OG_MODEL,
+                api_key=api_key,
+            )
+
+        return None
 
     async def chat(
         self,
@@ -85,14 +134,26 @@ class InferenceClient:
     ) -> InferenceResult:
         """
         Send a chat request. Tries 0g Compute first, then each fallback.
-        Returns content and any tool_call payloads.
         """
-        candidates = [self.config] + self._fallbacks
-        last_error = ""
+        candidates: list[InferenceConfig] = []
 
+        config = self._get_0g_config()
+        if config:
+            candidates.append(config)
+        candidates.extend(self._fallbacks)
+
+        if not candidates:
+            raise RuntimeError(
+                "No inference backend configured. Set either:\n"
+                "  OG_COMPUTE_LOCAL_PROXY=http://localhost:3000  (run: 0g-compute-cli inference serve --provider <ADDR>)\n"
+                "  or OG_COMPUTE_SERVICE_URL + OG_COMPUTE_API_KEY  (from: 0g-compute-cli inference get-secret --provider <ADDR>)\n"
+                "  or OPENAI_API_KEY for fallback"
+            )
+
+        last_error = ""
         for candidate in candidates:
             try:
-                return await self._call(candidate, messages, tools, tool_choice, max_turns)
+                return await self._call(candidate, messages, tools, tool_choice)
             except Exception as exc:
                 last_error = f"{candidate.base_url}: {exc}"
                 logger.warning("Inference fallback failed: %s", last_error)
@@ -106,8 +167,8 @@ class InferenceClient:
         messages: list[dict],
         tools: list[dict],
         tool_choice: str,
-        max_turns: int,
     ) -> InferenceResult:
+        """Make a single inference call to the given config's endpoint."""
         headers: dict[str, str] = {"Content-Type": "application/json"}
         if config.api_key:
             headers["Authorization"] = f"Bearer {config.api_key}"
@@ -123,11 +184,8 @@ class InferenceClient:
             payload["tool_choice"] = tool_choice
 
         async with httpx.AsyncClient(timeout=httpx.Timeout(config.timeout_seconds)) as client:
-            response = await client.post(
-                f"{config.base_url}/chat/completions",
-                headers=headers,
-                json=payload,
-            )
+            url = f"{config.base_url.rstrip('/')}/chat/completions"
+            response = await client.post(url, headers=headers, json=payload)
             response.raise_for_status()
             data = response.json()
 
@@ -154,6 +212,57 @@ class InferenceClient:
             tool_calls=tool_calls,
             finish_reason=finish_reason,
         )
+
+    def check_0g_status(self) -> dict[str, Any]:
+        """
+        Check if 0g Compute is configured and reachable.
+        Returns a status dict for debugging/setup UI.
+        """
+        config = self._get_0g_config()
+        if not config:
+            return {
+                "status": "not_configured",
+                "message": (
+                    "0g Compute not configured. Set one of:\n"
+                    "  OG_COMPUTE_LOCAL_PROXY=http://localhost:3000\n"
+                    "  OG_COMPUTE_SERVICE_URL + OG_COMPUTE_API_KEY\n"
+                    "See: https://docs.0g.ai/developer-hub/building-on-0g/compute-network/inference"
+                ),
+                "how_to_setup": [
+                    "1. Install: pnpm add @0glabs/0g-serving-broker -g",
+                    "2. Fund: 0g-compute-cli deposit --amount 10",
+                    "3. Transfer to provider: 0g-compute-cli transfer-fund --provider <ADDR> --amount 1",
+                    "4a. Local proxy (easy): 0g-compute-cli inference serve --provider <ADDR> --port 3000",
+                    "   → Set env: OG_COMPUTE_LOCAL_PROXY=http://localhost:3000",
+                    "4b. Direct API: 0g-compute-cli inference get-secret --provider <ADDR>",
+                    "   → Set env: OG_COMPUTE_SERVICE_URL=https://... OG_COMPUTE_API_KEY=app-sk-...",
+                ],
+            }
+
+        # Try a minimal health check
+        try:
+            import socket
+            if "localhost" in config.base_url:
+                # Local proxy — check if port is open
+                host = config.base_url.split("://")[1].split(":")[0]
+                port = 3000
+                if ":" in config.base_url:
+                    port = int(config.base_url.split(":")[-1].split("/")[0])
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(2)
+                result = sock.connect_ex((host, port))
+                sock.close()
+                if result == 0:
+                    return {"status": "ready", "backend": "0g_compute", "endpoint": config.base_url}
+                else:
+                    return {
+                        "status": "proxy_not_running",
+                        "message": f"Local proxy not reachable at {config.base_url}",
+                        "hint": "Run: 0g-compute-cli inference serve --provider <PROVIDER_ADDR> --port 3000",
+                    }
+            return {"status": "configured", "backend": "0g_compute", "endpoint": config.base_url}
+        except Exception as exc:
+            return {"status": "unknown", "error": str(exc)}
 
 
 # ---------------------------------------------------------------------------
