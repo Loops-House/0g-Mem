@@ -7,6 +7,7 @@ import { Brain } from "lucide-react";
 import AddMemoryForm from "@/components/AddMemoryForm";
 import QueryForm from "@/components/QueryForm";
 import MemoryFeed from "@/components/MemoryFeed";
+import MemoryExplorer from "@/components/MemoryExplorer";
 import { AddResponse } from "@/lib/api";
 
 export default function MemoryPage() {
@@ -43,12 +44,24 @@ export default function MemoryPage() {
 
       {/* Main Grid */}
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Left column — Add + Query */}
+        {/* Left column — Memory Explorer + Add */}
         <div className="space-y-6">
+          {/* Memory Explorer — shows what the agent knows */}
+          <div className="bg-surface-raised border border-border rounded-xl p-6">
+            <MemoryExplorer agentId={address} refreshTrigger={refreshTrigger} />
+          </div>
+
           {/* Add Memory */}
           <div className="bg-surface-raised border border-border rounded-xl p-6">
             <h2 className="text-sm font-semibold text-white mb-4">Add Memory</h2>
             <AddMemoryForm agentId={address} onSuccess={handleMemoryAdded} />
+          </div>
+        </div>
+
+        {/* Right column — Chain state + Query */}
+        <div className="space-y-6">
+          <div className="bg-surface-raised border border-border rounded-xl p-6">
+            <MemoryFeed agentId={address} refreshTrigger={refreshTrigger} />
           </div>
 
           {/* Query Memory */}
@@ -56,11 +69,6 @@ export default function MemoryPage() {
             <h2 className="text-sm font-semibold text-white mb-4">Query Memory</h2>
             <QueryForm agentId={address} />
           </div>
-        </div>
-
-        {/* Right column — Chain state */}
-        <div className="bg-surface-raised border border-border rounded-xl p-6">
-          <MemoryFeed agentId={address} refreshTrigger={refreshTrigger} />
         </div>
       </div>
     </div>

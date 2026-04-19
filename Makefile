@@ -1,7 +1,8 @@
-.PHONY: install test dev api proto clean lint
+.PHONY: install test dev api proto clean lint agent telegram
 
 install:
 	pip install -e ".[dev]"
+	pip install -e ".[agent]"
 	npm install
 
 dev:
@@ -32,11 +33,18 @@ demo-live:
 deploy:
 	npx hardhat run contracts/scripts/deploy.js --network 0g-testnet
 
+telegram:
+	python scripts/run_telegram.py
+
+agent:
+	@echo "Agent module ready. Import from 'agent' package."
+	@echo "  from agent import AgentLoop, ToolRegistry"
+
 lint:
-	ruff check ogmem/ api/ tests/
+	ruff check ogmem/ api/ tests/ agent/ protocol.py
 
 format:
-	ruff format ogmem/ api/ tests/
+	ruff format ogmem/ api/ tests/ agent/ protocol.py
 
 clean:
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true

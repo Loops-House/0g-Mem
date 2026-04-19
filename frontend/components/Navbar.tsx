@@ -7,6 +7,7 @@ import WalletButton from "./WalletButton";
 import { cn } from "@/lib/utils";
 
 const NAV_LINKS = [
+  { href: "/chat", label: "Chat" },
   { href: "/memory", label: "Memory" },
   { href: "/audit", label: "Audit" },
   { href: "/access", label: "Access" },

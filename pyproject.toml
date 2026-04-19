@@ -16,6 +16,7 @@ dependencies = [
     "cryptography>=42.0.0",
     "fastapi>=0.110.0",
     "uvicorn>=0.29.0",
+    "websockets>=11.0.0",
     "python-dotenv>=1.0.0",
     "sentence-transformers>=2.7.0",
     "grpcio>=1.60.0",
@@ -32,9 +33,14 @@ langchain = [
     "langchain>=0.1.0",
     "langchain-openai>=0.1.0",
 ]
+agent = [
+    "websockets>=11.0.0",
+    "python-telegram-bot>=20.0.0",
+    "httpx>=0.25.0",
+]
 
 [tool.hatch.build.targets.wheel]
-packages = ["ogmem"]
+packages = ["ogmem", "agent", "protocol"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

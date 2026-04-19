@@ -1,12 +1,125 @@
 """Proof data structures for 0g Mem."""
 
+from __future__ import annotations
+
 import json
 import time
 from dataclasses import dataclass, asdict, field
+from enum import Enum
 from typing import Optional
 
 from .merkle import MerkleProof
 
+
+# ---------------------------------------------------------------------------
+# Enums (mirrored in protocol.py for the WebSocket API)
+# ---------------------------------------------------------------------------
+
+class MemoryType(str, Enum):
+    """Four memory types that structure agent memory."""
+    EPISODIC   = "episodic"
+    SEMANTIC   = "semantic"
+    PROCEDURAL = "procedural"
+    WORKING    = "working"
+
+
+# ---------------------------------------------------------------------------
+# Session-batched memory data structures
+# ---------------------------------------------------------------------------
+
+@dataclass
+class MemoryBlob:
+    """
+    A single encrypted memory entry stored on 0g Storage.
+    One blob may contain one or more typed memory items.
+    """
+    blob_id: str                  # Content hash on 0g Storage
+    user_id: str
+    items: list[dict]             # [{text, memory_type, created_at, session_id}, ...]
+    embedding: list[float]         # For semantic search (dim=384)
+    memory_type: str              # Primary type: episodic|semantic|procedural|working
+    session_id: str
+    created_at: int = field(default_factory=lambda: int(time.time()))
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "MemoryBlob":
+        return cls(**d)
+
+
+@dataclass
+class MemoryIndex:
+    """
+    Lightweight search index for a user's memory — stored as a single blob on 0g Storage.
+    Fetched once per session. Searched locally. Updated at session end.
+    """
+    user_id: str
+    version: int
+    entries: list[dict]           # [{blob_id, embedding, text, memory_type, created_at, session_id}, ...]
+    last_updated: int = field(default_factory=lambda: int(time.time()))
+    prev_index_cid: str = ""       # For git-style linked history
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "MemoryIndex":
+        return cls(**d)
+
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict(), indent=2)
+
+
+@dataclass
+class MemoryDiff:
+    """
+    Git-style diff between two memory versions.
+    Stored on 0g Storage as a historical record.
+    """
+    user_id: str
+    session_id: str
+    version: int
+    added: list[dict]             # Full blob data for new entries
+    updated: list[tuple[str, dict]]  # [(old_blob_id, new_blob_data), ...]
+    deleted: list[str]            # blob_ids that were removed
+    timestamp: int = field(default_factory=lambda: int(time.time()))
+
+    def to_dict(self) -> dict:
+        d = asdict(self)
+        d["updated"] = [(a, b) for a, b in self.updated]  # tuples not serializable
+        return d
+
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict(), indent=2)
+
+
+@dataclass
+class MemoryVersion:
+    """
+    Points to the current state of a user's memory at a point in time.
+    The memory_root (Merkle root) is anchored on 0g Chain.
+    The index_cid and diff_cid point to blobs on 0g Storage.
+    """
+    version: int
+    user_id: str
+    memory_root: str              # Merkle root of all current blob_ids
+    index_cid: str                # CID of the MemoryIndex blob
+    diff_cid: str                 # CID of the MemoryDiff blob (empty for v1)
+    prev_version_root: str = ""   # Previous memory_root (for linked list traversal)
+    timestamp: int = field(default_factory=lambda: int(time.time()))
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict(), indent=2)
+
+
+# ---------------------------------------------------------------------------
+# Write Receipt
+# ---------------------------------------------------------------------------
 
 @dataclass
 class WriteReceipt:

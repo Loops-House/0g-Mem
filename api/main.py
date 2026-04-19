@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 load_dotenv()
 
-from api.routes import memory, nft
+from api.routes import memory, nft, session_ws
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +40,7 @@ app.add_middleware(
 
 app.include_router(memory.router)
 app.include_router(nft.router)
+app.include_router(session_ws.router)
 
 
 @app.get("/")
