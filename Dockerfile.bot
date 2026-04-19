@@ -9,7 +9,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Python deps
 COPY pyproject.toml ./
-RUN pip install --no-cache-dir -e ".[dev]"
+COPY ogmem/ ./ogmem/
+RUN pip install --no-cache-dir ".[dev]"
 
 # Install telegram bot dependency
 RUN pip install --no-cache-dir "python-telegram-bot>=21.0"
@@ -19,7 +20,6 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
 # Application code
-COPY ogmem/ ./ogmem/
 COPY proto/ ./proto/
 COPY runtime/ ./runtime/
 COPY telegram_bot/ ./telegram_bot/
