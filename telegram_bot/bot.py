@@ -104,6 +104,15 @@ def _get_runtime(user_id: int, mode: str = "assistant") -> AgentRuntime:
             system_prompt=AGENT_MODES[mode],
             tools=list(BUILTIN_TOOLS),
         )
+        # Auto-sync on first load: pull all snapshots from chain so memories
+        # survive Railway redeploys (no persistent disk on Railway).
+        try:
+            report = memory.pull_index()
+            if report.added > 0:
+                logger.info("Auto-sync on startup: pulled %d memories from chain.", report.added)
+        except Exception as e:
+            logger.warning("Auto-sync on startup failed (non-fatal): %s", e)
+
         _runtimes[user_id] = AgentRuntime(memory=memory, config=cfg)
 
     return _runtimes[user_id]
