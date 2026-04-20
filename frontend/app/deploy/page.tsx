@@ -158,7 +158,7 @@ export default function DeployPage() {
         `mutation serviceCreate($input: ServiceCreateInput!) {
           serviceCreate(input: $input) { id }
         }`,
-        { input: { projectId, name: "0g-mem-bot", source: { repo: "violinadoley/0g-Mem" }, branch: "vio" } }
+        { input: { projectId, name: "0g-mem-bot", source: { repo: "Loops-House/0g-Mem" }, branch: "vio" } }
       ) as { serviceCreate: { id: string } };
 
       const serviceId = serviceCreate.id;
@@ -461,14 +461,24 @@ export default function DeployPage() {
                   </span>
                 </div>
 
-                <button
-                  onClick={handleDeploy}
-                  disabled={!step4Ready || deploying}
-                  className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold bg-accent hover:bg-accent-hover text-white transition-all disabled:opacity-40"
-                >
-                  <Rocket className="w-4 h-4" />
-                  {deploying ? "Deploying…" : "Deploy My Bot"}
-                </button>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <button
+                    onClick={handleDeploy}
+                    disabled={!step4Ready || deploying}
+                    className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold bg-accent hover:bg-accent-hover text-white transition-all disabled:opacity-40"
+                  >
+                    <Rocket className="w-4 h-4" />
+                    {deploying ? "Deploying…" : "Deploy My Bot"}
+                  </button>
+                  <a
+                    href="https://railway.com/deploy/8vaCZl"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-medium border border-border hover:border-accent text-muted hover:text-white transition-all"
+                  >
+                    Deploy manually <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
               </>
             )}
           </div>
