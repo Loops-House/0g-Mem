@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir "python-telegram-bot>=21.0"
 
 # Node deps (0g Storage bridge)
 COPY package.json package-lock.json ./
-RUN npm ci --omit=dev
+RUN npm ci --omit=dev --legacy-peer-deps
 
 # Application code
 COPY proto/ ./proto/
