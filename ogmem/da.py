@@ -7,6 +7,10 @@ import time
 from typing import Optional
 
 
+class DAError(Exception):
+    """Raised when a 0G DA operation fails with no fallback."""
+
+
 def _try_import_grpc():
     """Try to import gRPC stubs — returns (grpc, pb2, pb2_grpc) or None."""
     try:
@@ -24,19 +28,24 @@ class DAClient:
     Every write commitment: {agent_id, blob_id, merkle_root, timestamp}
     Every read commitment:  {agent_id, query_hash, blob_ids, scores, merkle_root, timestamp}
 
-    Submission priority:
-      1. Local DA node via gRPC (localhost:51001) — real 0g DA
-      2. Local mode — deterministic SHA-256 hash (no network needed)
+    Requires a running 0G DA node (gRPC). No fallback — raises DAError on failure.
+    Run the DA node with: docker-compose up -d (see README).
     """
 
     def __init__(self, disperser_rpc: str, persist_path: Optional[str] = None):
         """
         Args:
             disperser_rpc: gRPC address of the DA disperser, e.g. "localhost:51001".
-                           Pass "" to use local mode only.
-            persist_path:  Path to persist _submitted list to disk (optional).
+                           Must be non-empty — no local mode fallback.
+            persist_path:  Path to persist submitted commitments to disk (optional).
                            Enables DA history to survive process restarts.
         """
+        if not disperser_rpc:
+            raise DAError(
+                "disperser_rpc is required. "
+                "Start the 0G DA node with: docker-compose up -d\n"
+                "See README: https://github.com/violinadoley/0g-Mem#running-the-da-node-optional"
+            )
         self.disperser_rpc = disperser_rpc
         self._persist_path = persist_path
         self._submitted: list[dict] = []  # store for fetch_commitment / fetch_agent_history
@@ -172,21 +181,22 @@ class DAClient:
         ]
 
     def _submit(self, commitment: dict) -> str:
-        """Try gRPC DA node first, fall back to local hash. Returns da_tx_hash."""
+        """Submit commitment to 0G DA via gRPC. Raises DAError on failure."""
+        if not self._is_grpc_available():
+            raise DAError(
+                "gRPC dependencies not installed. Run: pip install grpcio grpcio-tools\n"
+                "Then regenerate proto stubs: python -m grpc_tools.protoc ..."
+            )
+
         serialized = json.dumps(commitment, sort_keys=True).encode()
+        da_tx_hash = self._grpc_disperse(serialized)
+        if not da_tx_hash:
+            raise DAError(
+                f"0G DA dispersal failed. Check that the DA node is running at: "
+                f"{self.disperser_rpc}\n"
+                "Start with: docker-compose up -d"
+            )
 
-        if self.disperser_rpc and self._is_grpc_available():
-            da_tx_hash = self._grpc_disperse(serialized)
-            if da_tx_hash:
-                self._submitted.append({
-                    "da_tx_hash": da_tx_hash,
-                    "commitment": commitment,
-                    "submitted_at": int(time.time()),
-                })
-                self._save_submitted()
-                return da_tx_hash
-
-        da_tx_hash = "local:" + hashlib.sha256(serialized).hexdigest()
         self._submitted.append({
             "da_tx_hash": da_tx_hash,
             "commitment": commitment,
