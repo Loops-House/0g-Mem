@@ -277,6 +277,27 @@ async def cmd_clear(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 
+async def cmd_sync(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    uid = update.effective_user.id
+    rt = _get_runtime(uid)
+    await update.message.reply_text("Syncing memories from 0G Storage…")
+    try:
+        report = rt.memory.pull_index()
+        if report.added > 0:
+            msg = (
+                f"*Sync complete* ✓\n"
+                f"\\+{_escape_md(str(report.added))} new memories pulled\n"
+                f"{_escape_md(str(report.skipped))} already present"
+            )
+        elif report.failed > 0:
+            msg = f"Sync failed: {_escape_md(report.message or 'unknown error')}"
+        else:
+            msg = f"Already up to date \\({_escape_md(str(report.skipped))} entries\\)\\."
+        await update.message.reply_text(msg, parse_mode=ParseMode.MARKDOWN_V2)
+    except Exception as e:
+        await update.message.reply_text(f"Sync error: {_escape_md(str(e))}", parse_mode=ParseMode.MARKDOWN_V2)
+
+
 async def cmd_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     uid = update.effective_user.id
     rt = _get_runtime(uid)
@@ -382,6 +403,7 @@ def build_application() -> Application:
     app.add_handler(CommandHandler("forget", cmd_forget))
     app.add_handler(CommandHandler("clear", cmd_clear))
     app.add_handler(CommandHandler("stats", cmd_stats))
+    app.add_handler(CommandHandler("sync", cmd_sync))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     app.add_error_handler(error_handler)
 
@@ -399,6 +421,7 @@ async def set_commands(app: Application) -> None:
         BotCommand("forget", "Delete last memory"),
         BotCommand("clear", "Clear conversation history"),
         BotCommand("stats", "Memory stats"),
+        BotCommand("sync", "Pull latest memories from 0G Storage"),
     ]
     await app.bot.set_my_commands(commands)
 

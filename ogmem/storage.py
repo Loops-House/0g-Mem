@@ -1,13 +1,16 @@
 """0g Storage client — upload/download blobs via the Node.js SDK bridge."""
 
 import json
-import math
 import pathlib
 import subprocess
 from typing import Optional
 
-# Max entries kept in the local fallback cache
+# Max entries kept in the local download cache
 _LOCAL_CACHE_MAX = 2000
+
+
+class StorageError(Exception):
+    """Raised when a 0G Storage operation fails with no fallback."""
 
 import requests
 from web3 import Web3
@@ -17,11 +20,6 @@ from .encryption import encrypt, decrypt
 
 # Path to the Node.js bridge script
 _BRIDGE_SCRIPT = pathlib.Path(__file__).parent.parent / "scripts" / "zg_storage.js"
-
-# 0g Storage protocol constants (from @0glabs/0g-ts-sdk constant.js)
-CHUNK_SIZE = 256          # bytes per chunk
-MAX_CHUNKS_PER_SEGMENT = 1024
-SEGMENT_SIZE = CHUNK_SIZE * MAX_CHUNKS_PER_SEGMENT  # 256 KB
 
 # FixedPriceFlow contract ABI — submit + market()
 FLOW_ABI = [
@@ -77,101 +75,6 @@ MARKET_ABI = [
 ]
 
 
-def _next_pow2(n: int) -> int:
-    """Return next power of 2 >= n."""
-    if n <= 1:
-        return 1
-    p = 1
-    while p < n:
-        p <<= 1
-    return p
-
-
-def _compute_padded_chunks(num_chunks: int) -> int:
-    """
-    Compute padded chunk count matching 0g SDK's computePaddedSize().
-    Returns paddedChunks (what the contract expects to be reserved).
-    """
-    next_pow2 = _next_pow2(num_chunks)
-    if next_pow2 == num_chunks:
-        return next_pow2
-    min_chunk = max(1, next_pow2 // 16)
-    return math.ceil(num_chunks / min_chunk) * min_chunk
-
-
-def _split_nodes(num_chunks: int) -> list[int]:
-    """
-    Split file into submission nodes matching 0g SDK's splitNodes().
-    Returns list of chunk counts per node (each is a power of 2).
-    """
-    padded_chunks = _compute_padded_chunks(num_chunks)
-    next_chunk_size = _next_pow2(num_chunks)
-    nodes = []
-    while padded_chunks > 0:
-        if padded_chunks >= next_chunk_size:
-            padded_chunks -= next_chunk_size
-            nodes.append(next_chunk_size)
-        next_chunk_size //= 2
-    return nodes
-
-
-def _keccak(data: bytes) -> bytes:
-    """keccak256 of data, returns raw 32 bytes."""
-    return Web3.keccak(primitive=data)
-
-
-def _merkle_root_of_chunks(raw: bytes, num_chunks: int) -> bytes:
-    """
-    Compute keccak256 Merkle root over `num_chunks` chunks of CHUNK_SIZE each.
-    Uses same algorithm as 0g SDK MerkleTree.build().
-    """
-    leaves = []
-    for i in range(num_chunks):
-        start = i * CHUNK_SIZE
-        end = start + CHUNK_SIZE
-        chunk = raw[start:end] if start < len(raw) else b''
-        chunk = chunk.ljust(CHUNK_SIZE, b'\x00')
-        leaves.append(_keccak(chunk))
-
-    # Build tree — same as 0g SDK: process pairs, carry odd node up
-    queue = list(leaves)
-    while len(queue) > 1:
-        next_queue = []
-        i = 0
-        while i < len(queue):
-            if i + 1 < len(queue):
-                combined = _keccak(queue[i] + queue[i + 1])
-                next_queue.append(combined)
-                i += 2
-            else:
-                next_queue.append(queue[i])
-                i += 1
-        queue = next_queue
-
-    return queue[0]
-
-
-def _build_submission_nodes(raw: bytes, file_size: int) -> list[dict]:
-    """
-    Build the nodes[] array for the Flow.submit() Submission struct.
-    Matches 0g SDK's AbstractFile.createSubmission() logic.
-    """
-    num_chunks = max(1, math.ceil(file_size / CHUNK_SIZE))
-    chunk_groups = _split_nodes(num_chunks)
-
-    nodes = []
-    offset = 0
-    for group_chunks in chunk_groups:
-        segment_raw = raw[offset * CHUNK_SIZE:]
-        root = _merkle_root_of_chunks(segment_raw, group_chunks)
-        height = int(math.log2(group_chunks)) if group_chunks > 1 else 0
-        nodes.append({
-            "root": root,
-            "height": height,
-        })
-        offset += group_chunks
-
-    return nodes
 
 
 class StorageClient:
@@ -272,7 +175,7 @@ class StorageClient:
             return 0  # some testnet deployments have free storage
 
     def _upload_bytes(self, raw: bytes) -> str:
-        """Upload via Node.js bridge; falls back to local Merkle root computation."""
+        """Upload via Node.js bridge. Raises StorageError if upload fails."""
         if len(raw) == 0:
             raise ValueError("Cannot upload empty blob")
 
@@ -284,37 +187,40 @@ class StorageClient:
                 capture_output=True, text=True, timeout=120,
             )
             # SDK writes debug logs to stdout; our result is always the last JSON line
-            last_line = result.stdout.strip().splitlines()[-1]
-            out = json.loads(last_line)
+            lines = result.stdout.strip().splitlines()
+            if not lines:
+                raise StorageError(
+                    f"0G Storage upload failed: no output from Node.js bridge.\n"
+                    f"stderr: {result.stderr.strip()}"
+                )
+            out = json.loads(lines[-1])
             if out.get("ok"):
-                return out["root_hash"].lstrip("0x")
-        except Exception:
-            pass
+                return out["root_hash"].removeprefix("0x")
+            raise StorageError(
+                f"0G Storage upload failed: {out.get('error', 'unknown error')}"
+            )
+        except StorageError:
+            raise
+        except FileNotFoundError:
+            raise StorageError(
+                "Node.js is not installed or not in PATH. "
+                "0G Mem requires Node.js to upload blobs to 0G Storage. "
+                "Install Node.js: https://nodejs.org"
+            )
+        except subprocess.TimeoutExpired:
+            raise StorageError(
+                "0G Storage upload timed out after 120s. "
+                "Check that the 0G Storage indexer is reachable at: "
+                f"{self.indexer_rpc}"
+            )
+        except Exception as e:
+            raise StorageError(f"0G Storage upload failed: {e}") from e
 
-        file_size = len(raw)
-        nodes = _build_submission_nodes(raw, file_size)
-        if len(nodes) == 1:
-            file_root = nodes[0]["root"]
-        else:
-            queue = [n["root"] for n in nodes]
-            while len(queue) > 1:
-                next_q = []
-                for i in range(0, len(queue), 2):
-                    if i + 1 < len(queue):
-                        next_q.append(_keccak(queue[i] + queue[i + 1]))
-                    else:
-                        next_q.append(queue[i])
-                queue = next_q
-            file_root = queue[0]
-
-        blob_id = file_root.hex() if isinstance(file_root, bytes) else file_root.lstrip("0x")
-        self._local_store[blob_id] = raw.hex()
-        self._save_cache()
-        return blob_id
-
-    def _download_bytes(self, blob_id: str) -> Optional[bytes]:
-        """Download raw bytes via Node.js bridge, falling back to local cache."""
+    def _download_bytes(self, blob_id: str) -> bytes:
+        """Download raw bytes. Checks local cache first, then 0G Storage. Raises StorageError on failure."""
         clean_id = blob_id.lstrip("0x")
+
+        # Check local download cache (blobs already fetched this session)
         if clean_id in self._local_store:
             return bytes.fromhex(self._local_store[clean_id])
 
@@ -325,14 +231,38 @@ class StorageClient:
                  self._chain_rpc, clean_id],
                 capture_output=True, text=True, timeout=60,
             )
-            last_line = result.stdout.strip().splitlines()[-1]
-            out = json.loads(last_line)
+            lines = result.stdout.strip().splitlines()
+            if not lines:
+                raise StorageError(
+                    f"0G Storage download failed: no output from Node.js bridge.\n"
+                    f"stderr: {result.stderr.strip()}"
+                )
+            out = json.loads(lines[-1])
             if out.get("ok"):
-                return bytes.fromhex(out["data"])
-        except Exception:
-            pass
-
-        return None
+                raw = bytes.fromhex(out["data"])
+                # Cache the downloaded blob for this session
+                self._local_store[clean_id] = out["data"]
+                self._save_cache()
+                return raw
+            raise StorageError(
+                f"0G Storage download failed for blob {blob_id}: "
+                f"{out.get('error', 'unknown error')}"
+            )
+        except StorageError:
+            raise
+        except FileNotFoundError:
+            raise StorageError(
+                "Node.js is not installed or not in PATH. "
+                "0G Mem requires Node.js to download blobs from 0G Storage. "
+                "Install Node.js: https://nodejs.org"
+            )
+        except subprocess.TimeoutExpired:
+            raise StorageError(
+                f"0G Storage download timed out after 60s for blob {blob_id}. "
+                f"Check that the 0G Storage indexer is reachable at: {self.indexer_rpc}"
+            )
+        except Exception as e:
+            raise StorageError(f"0G Storage download failed for blob {blob_id}: {e}") from e
 
     def _load_cache(self) -> None:
         """Load persisted local blob cache from disk."""

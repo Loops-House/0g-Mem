@@ -1,9 +1,11 @@
 """0g Mem — Verifiable, Private, Owned Agent Memory on 0g Labs."""
 
-from .memory import VerifiableMemory
+from .memory import VerifiableMemory, SyncReport
 from .proof import AuditReport, QueryProof, WriteReceipt, MemoryType
 from .encryption import derive_encryption_key
 from .inference import ZeroGInferenceClient, ChatMessage
+from .storage import StorageError
+from .da import DAError
 
 __all__ = [
     "VerifiableMemory",
@@ -11,8 +13,11 @@ __all__ = [
     "QueryProof",
     "AuditReport",
     "MemoryType",
+    "SyncReport",
     "derive_encryption_key",
     "ZeroGInferenceClient",
     "ChatMessage",
+    "StorageError",
+    "DAError",
 ]
 __version__ = "0.2.0"

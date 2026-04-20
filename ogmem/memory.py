@@ -51,6 +51,15 @@ class DistillReport:
     deleted: bool         # whether originals were deleted
 
 
+@dataclass
+class SyncReport:
+    """Summary of a memory.sync() / pull_index() pass."""
+    added: int            # entries merged into local index
+    skipped: int          # entries already present
+    failed: int = 0       # entries that could not be fetched
+    message: str = ""     # human-readable status
+
+
 class MemorySession:
     """
     Buffers memory writes and commits a single chain tx when closed.
@@ -469,6 +478,210 @@ class VerifiableMemory:
     def get_stale_memories(self) -> list[dict]:
         """Return all entries currently flagged as stale."""
         return [e for e in self._entries if e.get("stale")]
+
+    # ─── Cross-instance sync ───────────────────────────────────────────────────
+
+    def sync(self) -> "SyncReport":
+        """
+        Rebuild the local index from the DA history file.
+
+        Reads all memory_write commitments from the local DA persist file,
+        fetches any blobs not already in the local index, and merges them in.
+        Solves same-machine consistency (e.g. MCP server starting after the
+        Telegram bot has written memories on the same machine).
+
+        Returns a SyncReport with counts of added and skipped entries.
+        """
+        history = self._da.fetch_agent_history(self.agent_id)
+        existing_blob_ids = {e["blob_id"] for e in self._entries}
+
+        added = 0
+        skipped = 0
+        failed = 0
+
+        for event in sorted(history, key=lambda x: x.get("timestamp", 0)):
+            if event.get("type") != "memory_write":
+                continue
+            blob_id = event.get("blob_id", "")
+            # Skip synthetic blob_ids from evolve/distill operations
+            if not blob_id or blob_id.startswith("evolve:") or blob_id.startswith("distill:"):
+                continue
+            if blob_id in existing_blob_ids:
+                skipped += 1
+                continue
+
+            try:
+                if self._encrypted and self._enc_key:
+                    data = self._storage.download_encrypted(blob_id, self._enc_key)
+                else:
+                    data = self._storage.download(blob_id)
+
+                if not data or "text" not in data:
+                    failed += 1
+                    continue
+
+                # Use stored embedding if present, recompute if not
+                embedding = data.get("embedding") or self._compute.embed(data["text"])
+
+                entry = {
+                    "blob_id": blob_id,
+                    "embedding": embedding,
+                    "text": data["text"],
+                    "memory_type": data.get("memory_type", MemoryType.EPISODIC.value),
+                    "timestamp": data.get("timestamp", event.get("timestamp", 0)),
+                    "retrieval_count": 0,
+                    "last_retrieved": 0,
+                    "stale": False,
+                    "weight": 1.0,
+                }
+                self._entries.append(entry)
+                self._tree.add_leaf(blob_id)
+                existing_blob_ids.add(blob_id)
+                added += 1
+
+            except Exception:
+                failed += 1
+
+        if added > 0:
+            self._save_index()
+
+        return SyncReport(added=added, skipped=skipped, failed=failed)
+
+    def push_index(self) -> str:
+        """
+        Upload an encrypted snapshot of the full memory index to 0G Storage
+        and anchor its blob ID on-chain.
+
+        Any other instance with the same AGENT_KEY can call pull_index() to
+        discover and download this snapshot — enabling cross-machine sync
+        (e.g. Telegram bot on Railway → local MCP server).
+
+        Returns the index_blob_id (content address on 0G Storage).
+        """
+        snapshot = {
+            "type": "index_snapshot",
+            "agent_id": self.agent_id,
+            "pushed_at": int(time.time()),
+            "entry_count": len(self._entries),
+            "entries": [
+                {
+                    "blob_id": e["blob_id"],
+                    "text": e["text"],
+                    "embedding": e["embedding"],
+                    "memory_type": e.get("memory_type", MemoryType.EPISODIC.value),
+                    "timestamp": e.get("timestamp", 0),
+                    "retrieval_count": e.get("retrieval_count", 0),
+                    "last_retrieved": e.get("last_retrieved", 0),
+                    "stale": e.get("stale", False),
+                    "weight": e.get("weight", 1.0),
+                }
+                for e in self._entries
+            ],
+        }
+
+        if self._encrypted and self._enc_key:
+            index_blob_id = self._storage.upload_encrypted(snapshot, self._enc_key)
+        else:
+            index_blob_id = self._storage.upload(snapshot)
+
+        # Anchor on-chain: store the index blob ID in the da_tx_hash field so
+        # any machine with the same key can discover it via chain history.
+        current_root = self._tree.get_root()
+        self._chain.update_root(
+            merkle_root=current_root,
+            da_tx_hash=index_blob_id,
+        )
+
+        return index_blob_id
+
+    def pull_index(self, index_blob_id: str | None = None) -> "SyncReport":
+        """
+        Download and merge an index snapshot from 0G Storage.
+
+        If index_blob_id is provided, fetches that snapshot directly.
+        Otherwise scans the on-chain history to find the latest snapshot
+        pushed by push_index() — works cross-machine as long as both
+        instances share the same AGENT_KEY.
+
+        Returns a SyncReport with counts of added and skipped entries.
+        """
+        # If no blob_id given, discover via chain history
+        if not index_blob_id:
+            index_blob_id = self._discover_latest_index_blob()
+            if not index_blob_id:
+                return SyncReport(added=0, skipped=0, failed=0,
+                                  message="No index snapshot found on-chain.")
+
+        if self._encrypted and self._enc_key:
+            snapshot = self._storage.download_encrypted(index_blob_id, self._enc_key)
+        else:
+            snapshot = self._storage.download(index_blob_id)
+
+        if not snapshot or snapshot.get("type") != "index_snapshot":
+            return SyncReport(added=0, skipped=0, failed=1,
+                              message=f"Blob {index_blob_id} is not a valid index snapshot.")
+
+        existing_blob_ids = {e["blob_id"] for e in self._entries}
+        added = 0
+        skipped = 0
+
+        for entry in snapshot.get("entries", []):
+            blob_id = entry.get("blob_id", "")
+            if not blob_id or blob_id in existing_blob_ids:
+                skipped += 1
+                continue
+
+            # Recompute embedding if missing (shouldn't happen but be safe)
+            if not entry.get("embedding") and entry.get("text"):
+                entry["embedding"] = self._compute.embed(entry["text"])
+
+            self._entries.append({
+                "blob_id": blob_id,
+                "embedding": entry.get("embedding", []),
+                "text": entry.get("text", ""),
+                "memory_type": entry.get("memory_type", MemoryType.EPISODIC.value),
+                "timestamp": entry.get("timestamp", 0),
+                "retrieval_count": entry.get("retrieval_count", 0),
+                "last_retrieved": entry.get("last_retrieved", 0),
+                "stale": entry.get("stale", False),
+                "weight": entry.get("weight", 1.0),
+            })
+            self._tree.add_leaf(blob_id)
+            existing_blob_ids.add(blob_id)
+            added += 1
+
+        if added > 0:
+            self._save_index()
+
+        return SyncReport(
+            added=added,
+            skipped=skipped,
+            failed=0,
+            message=f"Pulled {added} entries from snapshot {index_blob_id[:16]}...",
+        )
+
+    def _discover_latest_index_blob(self) -> str | None:
+        """
+        Scan on-chain history to find the latest index snapshot blob ID.
+        push_index() stores the index blob_id in the da_tx_hash field of
+        an updateRoot call — we scan backwards to find the most recent one.
+        """
+        all_roots = self._chain.get_all_roots(self._chain.agent_address)
+        # Scan newest-first
+        for state in reversed(all_roots):
+            candidate_blob_id = state.da_tx_hash
+            if not candidate_blob_id or len(candidate_blob_id) < 16:
+                continue
+            try:
+                if self._encrypted and self._enc_key:
+                    data = self._storage.download_encrypted(candidate_blob_id, self._enc_key)
+                else:
+                    data = self._storage.download(candidate_blob_id)
+                if data and data.get("type") == "index_snapshot":
+                    return candidate_blob_id
+            except Exception:
+                continue
+        return None
 
     def delete_memory(self, blob_id: str) -> bool:
         """
