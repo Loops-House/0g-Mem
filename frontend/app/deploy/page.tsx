@@ -99,6 +99,26 @@ function StepCard({
   );
 }
 
+const RAILWAY_API = "https://backboard.railway.com/graphql/v2";
+
+async function railwayGql(
+  token: string,
+  query: string,
+  variables?: object
+): Promise<Record<string, unknown>> {
+  const res = await fetch(RAILWAY_API, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ query, variables }),
+  });
+  const json = await res.json();
+  if (json.errors) throw new Error(json.errors[0].message);
+  return json.data as Record<string, unknown>;
+}
+
 export default function DeployPage() {
   const { isConnected, address } = useAccount();
   const { connect, isPending } = useConnect();
@@ -106,24 +126,80 @@ export default function DeployPage() {
   const [botToken, setBotToken] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [serviceUrl, setServiceUrl] = useState("");
+  const [agentKey, setAgentKey] = useState("");
+  const [railwayToken, setRailwayToken] = useState("");
   const [currentStep, setCurrentStep] = useState(isConnected ? 2 : 1);
+  const [deploying, setDeploying] = useState(false);
+  const [deployedUrl, setDeployedUrl] = useState("");
+  const [deployError, setDeployError] = useState("");
 
   const step1Done = isConnected;
   const step2Done = botToken.length > 10;
   const step3Done = apiKey.length > 10 && serviceUrl.length > 5;
   const allDone = step1Done && step2Done && step3Done;
+  const step4Ready = allDone && agentKey.length > 10 && railwayToken.length > 10;
 
-  const railwayUrl = allDone
-    ? `https://railway.app/new/template?template=https://github.com/violinadoley/0g-Mem` +
-      `&envs=AGENT_KEY,TELEGRAM_BOT_TOKEN,ZEROG_SERVICE_URL,ZEROG_API_KEY,ZEROG_MODEL,MEMORY_REGISTRY_ADDRESS,MEMORY_NFT_ADDRESS` +
-      `&AGENT_KEYDesc=Your+0G+wallet+private+key` +
-      `&TELEGRAM_BOT_TOKENDesc=Token+from+BotFather` +
-      `&ZEROG_SERVICE_URLDesc=0G+Compute+provider+URL` +
-      `&ZEROG_API_KEYDesc=0G+Compute+API+key` +
-      `&ZEROG_MODELDesc=Model+name&ZEROG_MODELDefault=qwen/qwen-2.5-7b-instruct` +
-      `&MEMORY_REGISTRY_ADDRESSDefault=0xEDF95D9CFb157F5F38C1125B7DFB3968E05d2c4b` +
-      `&MEMORY_NFT_ADDRESSDefault=0x70ad85300f522A41689954a4153744BF6E57E488`
-    : "#";
+  async function handleDeploy() {
+    setDeploying(true);
+    setDeployError("");
+    try {
+      // 1. Create project
+      const { projectCreate } = await railwayGql(
+        railwayToken,
+        `mutation {
+          projectCreate(input: { name: "0g-mem-bot" }) {
+            id
+            environments { edges { node { id } } }
+          }
+        }`
+      ) as { projectCreate: { id: string; environments: { edges: { node: { id: string } }[] } } };
+
+      const projectId = projectCreate.id;
+      const environmentId = projectCreate.environments.edges[0].node.id;
+
+      // 2. Create service linked to GitHub repo
+      const { serviceCreate } = await railwayGql(
+        railwayToken,
+        `mutation serviceCreate($input: ServiceCreateInput!) {
+          serviceCreate(input: $input) { id }
+        }`,
+        { input: { projectId, name: "0g-mem-bot", source: { repo: "violinadoley/0g-Mem" } } }
+      ) as { serviceCreate: { id: string } };
+
+      const serviceId = serviceCreate.id;
+
+      // 3. Set all env vars (including secrets)
+      await railwayGql(
+        railwayToken,
+        `mutation variableCollectionUpsert($input: VariableCollectionUpsertInput!) {
+          variableCollectionUpsert(input: $input)
+        }`,
+        {
+          input: {
+            projectId,
+            serviceId,
+            environmentId,
+            variables: {
+              AGENT_KEY: agentKey,
+              TELEGRAM_BOT_TOKEN: botToken,
+              ZEROG_SERVICE_URL: serviceUrl,
+              ZEROG_API_KEY: apiKey,
+              ZEROG_MODEL: "qwen/qwen-2.5-7b-instruct",
+              MEMORY_REGISTRY_ADDRESS: "0xEDF95D9CFb157F5F38C1125B7DFB3968E05d2c4b",
+              MEMORY_NFT_ADDRESS: "0x70ad85300f522A41689954a4153744BF6E57E488",
+              TOKENIZERS_PARALLELISM: "false",
+            },
+          },
+        }
+      );
+
+      setDeployedUrl(`https://railway.app/project/${projectId}`);
+    } catch (err) {
+      setDeployError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setDeploying(false);
+    }
+  }
 
   return (
     <div className="max-w-2xl mx-auto px-4 sm:px-6 py-12 space-y-8">
@@ -269,10 +345,11 @@ export default function DeployPage() {
             </code>
           </li>
           <li>
-            Get your API key:{" "}
+            Get your Service URL + API key:{" "}
             <code className="font-mono text-white text-xs">
               0g-compute-cli inf get-secret
             </code>
+            {" "}— prints both values, paste them below
           </li>
         </ol>
         <div className="space-y-3">
@@ -308,56 +385,97 @@ export default function DeployPage() {
       </StepCard>
 
       {/* Step 4 — Deploy */}
-      <StepCard step={STEPS[3]} active={currentStep === 4} done={false}>
+      <StepCard step={STEPS[3]} active={currentStep === 4} done={!!deployedUrl}>
         {allDone ? (
           <div className="space-y-4">
-            <p className="text-sm text-muted leading-relaxed">
-              Everything is ready. Click below to deploy your own bot instance on Railway. Your env
-              vars are pre-filled — just add your <code className="font-mono text-white">AGENT_KEY</code> (private key).
-            </p>
+            {deployedUrl ? (
+              <div className="space-y-3">
+                <div className="flex items-start gap-2 text-xs text-green-400/80 bg-green-500/10 border border-green-500/20 rounded-lg px-3 py-2.5">
+                  <Check className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  <span>Bot deployed! Railway is building your image now (~3 min).</span>
+                </div>
+                <a
+                  href={deployedUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold bg-accent hover:bg-accent-hover text-white transition-all w-fit"
+                >
+                  Open Railway Project <ExternalLink className="w-3.5 h-3.5" />
+                </a>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm text-muted leading-relaxed">
+                  Enter your private key and a Railway API token — we&apos;ll create the project,
+                  link the repo, and set all env vars automatically.
+                </p>
 
-            <div className="space-y-3">
-              <CopyBox label="TELEGRAM_BOT_TOKEN" value={botToken} />
-              <CopyBox label="ZEROG_SERVICE_URL" value={serviceUrl} />
-              <CopyBox
-                label="MEMORY_REGISTRY_ADDRESS"
-                value="0xEDF95D9CFb157F5F38C1125B7DFB3968E05d2c4b"
-              />
-              <CopyBox
-                label="MEMORY_NFT_ADDRESS"
-                value="0x70ad85300f522A41689954a4153744BF6E57E488"
-              />
-            </div>
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <label className="text-xs text-muted font-medium">
+                      Agent Key (MetaMask private key)
+                    </label>
+                    <input
+                      type="password"
+                      value={agentKey}
+                      onChange={(e) => setAgentKey(e.target.value)}
+                      placeholder="0x..."
+                      className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-white font-mono placeholder:text-muted/50 focus:outline-none focus:border-accent/50 transition-colors"
+                    />
+                    <p className="text-xs text-muted">
+                      MetaMask → Settings → Account Details → Export Private Key
+                    </p>
+                  </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 pt-2">
-              <a
-                href={railwayUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold bg-accent hover:bg-accent-hover text-white transition-all"
-              >
-                <Rocket className="w-4 h-4" />
-                Deploy to Railway
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-              <a
-                href="https://render.com/deploy"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 px-5 py-3 rounded-xl text-sm font-medium border border-border hover:border-accent text-muted hover:text-white transition-all"
-              >
-                Deploy to Render
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-            </div>
+                  <div className="space-y-2">
+                    <label className="text-xs text-muted font-medium">Railway API Token</label>
+                    <input
+                      type="password"
+                      value={railwayToken}
+                      onChange={(e) => setRailwayToken(e.target.value)}
+                      placeholder="railway_token_..."
+                      className="w-full bg-surface border border-border rounded-lg px-3 py-2 text-sm text-white font-mono placeholder:text-muted/50 focus:outline-none focus:border-accent/50 transition-colors"
+                    />
+                    <p className="text-xs text-muted">
+                      Get one at{" "}
+                      <a
+                        href="https://railway.app/account/tokens"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-accent hover:underline"
+                      >
+                        railway.app/account/tokens
+                      </a>{" "}
+                      — takes 10 seconds
+                    </p>
+                  </div>
+                </div>
 
-            <div className="flex items-start gap-2 text-xs text-blue-400/80 bg-blue-500/10 border border-blue-500/20 rounded-lg px-3 py-2.5">
-              <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-              <span>
-                On Railway, add <code className="font-mono">AGENT_KEY</code> manually (your MetaMask
-                private key). Never share it — it controls your memory.
-              </span>
-            </div>
+                {deployError && (
+                  <div className="flex items-start gap-2 text-xs text-red-400/80 bg-red-500/10 border border-red-500/20 rounded-lg px-3 py-2.5">
+                    <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                    <span>{deployError}</span>
+                  </div>
+                )}
+
+                <div className="flex items-start gap-2 text-xs text-yellow-400/80 bg-yellow-500/10 border border-yellow-500/20 rounded-lg px-3 py-2.5">
+                  <AlertCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                  <span>
+                    Your private key and API keys are sent directly to Railway&apos;s API over
+                    HTTPS. They are never stored on our servers.
+                  </span>
+                </div>
+
+                <button
+                  onClick={handleDeploy}
+                  disabled={!step4Ready || deploying}
+                  className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold bg-accent hover:bg-accent-hover text-white transition-all disabled:opacity-40"
+                >
+                  <Rocket className="w-4 h-4" />
+                  {deploying ? "Deploying…" : "Deploy My Bot"}
+                </button>
+              </>
+            )}
           </div>
         ) : (
           <p className="text-sm text-muted">Complete the steps above to unlock deployment.</p>
