@@ -13,6 +13,13 @@ class DAError(Exception):
 
 def _try_import_grpc():
     """Try to import gRPC stubs — returns (grpc, pb2, pb2_grpc) or None."""
+    import sys
+    import pathlib
+    # Ensure repo root is on sys.path so `proto` package is always importable
+    # regardless of working directory (local vs Railway vs Docker).
+    _repo_root = str(pathlib.Path(__file__).parent.parent)
+    if _repo_root not in sys.path:
+        sys.path.insert(0, _repo_root)
     try:
         import grpc
         from proto import disperser_pb2, disperser_pb2_grpc
