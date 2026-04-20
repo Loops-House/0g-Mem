@@ -7,6 +7,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential curl nodejs npm \
     && rm -rf /var/lib/apt/lists/*
 
+# Install CPU-only torch first (~200 MB vs ~2 GB with CUDA)
+RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+
 # Python deps
 COPY pyproject.toml LICENSE README.md ./
 COPY ogmem/ ./ogmem/
