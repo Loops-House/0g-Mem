@@ -99,20 +99,15 @@ function StepCard({
   );
 }
 
-const RAILWAY_API = "https://backboard.railway.com/graphql/v2";
-
 async function railwayGql(
   token: string,
   query: string,
   variables?: object
 ): Promise<Record<string, unknown>> {
-  const res = await fetch(RAILWAY_API, {
+  const res = await fetch("/api/railway", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({ query, variables }),
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ token, query, variables }),
   });
   const json = await res.json();
   if (json.errors) throw new Error(json.errors[0].message);
@@ -163,7 +158,7 @@ export default function DeployPage() {
         `mutation serviceCreate($input: ServiceCreateInput!) {
           serviceCreate(input: $input) { id }
         }`,
-        { input: { projectId, name: "0g-mem-bot", source: { repo: "violinadoley/0g-Mem" } } }
+        { input: { projectId, name: "0g-mem-bot", source: { repo: "violinadoley/0g-Mem" }, branch: "vio" } }
       ) as { serviceCreate: { id: string } };
 
       const serviceId = serviceCreate.id;
