@@ -218,7 +218,7 @@ class StorageClient:
 
     def _download_bytes(self, blob_id: str) -> bytes:
         """Download raw bytes. Checks local cache first, then 0G Storage. Raises StorageError on failure."""
-        clean_id = blob_id.lstrip("0x")
+        clean_id = blob_id.removeprefix("0x")
 
         # Check local download cache (blobs already fetched this session)
         if clean_id in self._local_store:

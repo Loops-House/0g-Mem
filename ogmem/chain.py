@@ -46,9 +46,9 @@ class ChainClient:
 
     def update_root(self, merkle_root: str, da_tx_hash: str) -> str:
         """Anchor a Merkle root on-chain. Returns chain_tx_hash."""
-        merkle_root_bytes = bytes.fromhex(merkle_root.lstrip("0x").zfill(64))
+        merkle_root_bytes = bytes.fromhex(merkle_root.removeprefix("0x").zfill(64))
         # da_tx_hash may be a "local:..." hash from offline DA mode — hash it to bytes32
-        da_clean = da_tx_hash.lstrip("0x")
+        da_clean = da_tx_hash.removeprefix("0x")
         if ":" in da_tx_hash:
             import hashlib
             da_tx_hash_bytes = hashlib.sha256(da_tx_hash.encode()).digest()
@@ -145,7 +145,7 @@ class ChainClient:
         shard_bytes = []
         if shard_blob_ids:
             shard_bytes = [
-                bytes.fromhex(bid.lstrip("0x").zfill(64))
+                bytes.fromhex(bid.removeprefix("0x").zfill(64))
                 for bid in shard_blob_ids
             ]
         grant_fn = self.nft.functions.grantAccess(
@@ -185,7 +185,7 @@ class ChainClient:
     def check_access(self, owner_address: str, agent_address: str, blob_id: str) -> bool:
         """Return True if agent_address has on-chain access to blob_id."""
         self._require_nft()
-        blob_bytes = bytes.fromhex(blob_id.lstrip("0x").zfill(64))
+        blob_bytes = bytes.fromhex(blob_id.removeprefix("0x").zfill(64))
         try:
             return self.nft.functions.hasAccess(
                 Web3.to_checksum_address(owner_address),
