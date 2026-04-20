@@ -596,92 +596,101 @@ class VerifiableMemory:
 
     def pull_index(self, index_blob_id: str | None = None) -> "SyncReport":
         """
-        Download and merge an index snapshot from 0G Storage.
+        Download and merge index snapshots from 0G Storage.
 
         If index_blob_id is provided, fetches that snapshot directly.
-        Otherwise scans the on-chain history to find the latest snapshot
-        pushed by push_index() — works cross-machine as long as both
-        instances share the same AGENT_KEY.
+        Otherwise scans the on-chain history and merges ALL snapshots found,
+        so no memories are missed regardless of which instance pushed them.
 
         Returns a SyncReport with counts of added and skipped entries.
         """
-        # If no blob_id given, discover via chain history
-        if not index_blob_id:
-            index_blob_id = self._discover_latest_index_blob()
-            if not index_blob_id:
+        # Resolve blob_ids to process
+        if index_blob_id:
+            blob_ids_to_pull = [index_blob_id]
+        else:
+            discovered = self._discover_latest_index_blob()
+            if not discovered:
                 return SyncReport(added=0, skipped=0, failed=0,
                                   message="No index snapshot found on-chain.")
-
-        if self._encrypted and self._enc_key:
-            snapshot = self._storage.download_encrypted(index_blob_id, self._enc_key)
-        else:
-            snapshot = self._storage.download(index_blob_id)
-
-        if not snapshot or snapshot.get("type") != "index_snapshot":
-            return SyncReport(added=0, skipped=0, failed=1,
-                              message=f"Blob {index_blob_id} is not a valid index snapshot.")
+            blob_ids_to_pull = discovered
 
         existing_blob_ids = {e["blob_id"] for e in self._entries}
         added = 0
         skipped = 0
+        failed = 0
 
-        for entry in snapshot.get("entries", []):
-            blob_id = entry.get("blob_id", "")
-            if not blob_id or blob_id in existing_blob_ids:
-                skipped += 1
+        for blob_id in blob_ids_to_pull:
+            if self._encrypted and self._enc_key:
+                snapshot = self._storage.download_encrypted(blob_id, self._enc_key)
+            else:
+                snapshot = self._storage.download(blob_id)
+
+            if not snapshot or snapshot.get("type") != "index_snapshot":
+                failed += 1
                 continue
 
-            # Recompute embedding if missing (shouldn't happen but be safe)
-            if not entry.get("embedding") and entry.get("text"):
-                entry["embedding"] = self._compute.embed(entry["text"])
+            for entry in snapshot.get("entries", []):
+                eid = entry.get("blob_id", "")
+                if not eid or eid in existing_blob_ids:
+                    skipped += 1
+                    continue
 
-            self._entries.append({
-                "blob_id": blob_id,
-                "embedding": entry.get("embedding", []),
-                "text": entry.get("text", ""),
-                "memory_type": entry.get("memory_type", MemoryType.EPISODIC.value),
-                "timestamp": entry.get("timestamp", 0),
-                "retrieval_count": entry.get("retrieval_count", 0),
-                "last_retrieved": entry.get("last_retrieved", 0),
-                "stale": entry.get("stale", False),
-                "weight": entry.get("weight", 1.0),
-            })
-            self._tree.add_leaf(blob_id)
-            existing_blob_ids.add(blob_id)
-            added += 1
+                if not entry.get("embedding") and entry.get("text"):
+                    entry["embedding"] = self._compute.embed(entry["text"])
+
+                self._entries.append({
+                    "blob_id": eid,
+                    "embedding": entry.get("embedding", []),
+                    "text": entry.get("text", ""),
+                    "memory_type": entry.get("memory_type", MemoryType.EPISODIC.value),
+                    "timestamp": entry.get("timestamp", 0),
+                    "retrieval_count": entry.get("retrieval_count", 0),
+                    "last_retrieved": entry.get("last_retrieved", 0),
+                    "stale": entry.get("stale", False),
+                    "weight": entry.get("weight", 1.0),
+                })
+                self._tree.add_leaf(eid)
+                existing_blob_ids.add(eid)
+                added += 1
 
         if added > 0:
             self._save_index()
 
+        snapshots_count = len(blob_ids_to_pull)
         return SyncReport(
             added=added,
             skipped=skipped,
-            failed=0,
-            message=f"Pulled {added} entries from snapshot {index_blob_id[:16]}...",
+            failed=failed,
+            message=f"Merged {snapshots_count} snapshot(s): +{added} new, {skipped} already present.",
         )
 
-    def _discover_latest_index_blob(self) -> str | None:
+    def _discover_latest_index_blob(self) -> list[str] | None:
         """
         Scan on-chain history to find the latest index snapshot blob ID.
         push_index() stores the index blob_id in the da_tx_hash field of
         an updateRoot call — we scan backwards to find the most recent one.
         """
         all_roots = self._chain.get_all_roots(self._chain.agent_address)
-        # Scan newest-first
+        # Collect all valid snapshot blob_ids (deduplicated)
+        seen: set[str] = set()
+        snapshot_blob_ids: list[str] = []
         for state in reversed(all_roots):
             candidate_blob_id = state.da_tx_hash
             if not candidate_blob_id or len(candidate_blob_id) < 16:
                 continue
+            if candidate_blob_id in seen:
+                continue
+            seen.add(candidate_blob_id)
             try:
                 if self._encrypted and self._enc_key:
                     data = self._storage.download_encrypted(candidate_blob_id, self._enc_key)
                 else:
                     data = self._storage.download(candidate_blob_id)
                 if data and data.get("type") == "index_snapshot":
-                    return candidate_blob_id
+                    snapshot_blob_ids.append(candidate_blob_id)
             except Exception:
                 continue
-        return None
+        return snapshot_blob_ids or None
 
     def delete_memory(self, blob_id: str) -> bool:
         """
