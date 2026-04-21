@@ -1,6 +1,6 @@
-# 0g Mem — Technical Architecture
+# 0G Mem — Technical Architecture
 
-> Verifiable Agent Memory Infrastructure built on 0g Labs
+> Verifiable Agent Memory Infrastructure built on 0G Labs
 
 ---
 
@@ -12,8 +12,8 @@ AI agents make decisions based on retrieved memory. Today:
 - **EU AI Act Article 12** mandates tamper-proof logs for high-risk AI by Aug 2026
 - **Multi-agent systems** have no defense against memory poisoning
 
-0g Mem solves this by making every memory read/write **cryptographically verifiable,
-immutable, and auditable** — using 0g's full stack as the only platform that combines
+0G Mem solves this by making every memory read/write **cryptographically verifiable,
+immutable, and auditable** — using 0G's full stack as the only platform that combines
 Storage + DA + Chain in one ecosystem.
 
 ---
@@ -28,7 +28,7 @@ Storage + DA + Chain in one ecosystem.
                              │ SDK calls (3 lines of code)
                              ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                      0g Mem SDK (Python)                            │
+│                      0G Mem SDK (Python)                            │
 │                                                                     │
 │   VerifiableMemory.add(text)      →  write pipeline                 │
 │   VerifiableMemory.query(text)    →  read pipeline + proof          │
@@ -37,7 +37,7 @@ Storage + DA + Chain in one ecosystem.
      │              │              │              │
      ▼              ▼              ▼              ▼
 ┌─────────┐  ┌──────────┐  ┌──────────┐  ┌──────────────┐
-│   0g    │  │  Local   │  │   0g     │  │   0g Chain   │
+│   0G    │  │  Local   │  │   0G     │  │   0G Chain   │
 │ Storage │  │Embeddings│  │    DA    │  │  (EVM L1)    │
 │         │  │          │  │          │  │              │
 │ Memory  │  │sentence- │  │Commitment│  │MemoryRegistry│
@@ -65,7 +65,7 @@ Step 2: ENCRYPT
   → Server never sees plaintext
 
 Step 3: STORAGE
-  → Upload encrypted blob to 0g Storage via @0gfoundation/0g-ts-sdk (Node.js bridge)
+  → Upload encrypted blob to 0G Storage via @0gfoundation/0g-ts-sdk (Node.js bridge)
   → Returns: blob_id (keccak256 Merkle root of blob content)
 
 Step 4: MERKLE UPDATE
@@ -73,12 +73,12 @@ Step 4: MERKLE UPDATE
   → Compute new Merkle root
 
 Step 5: DA COMMITMENT
-  → Post via gRPC to local 0g DA node (localhost:51001):
+  → Post via gRPC to local 0G DA node (localhost:51001):
     { type: "memory_write", agent_id, blob_id, merkle_root, timestamp }
   → Returns: da_tx_hash ("grpc:<request_id_hex>")
 
 Step 6: CHAIN ANCHOR
-  → Call MemoryRegistry.updateRoot(merkle_root, da_tx_hash) on 0g Chain
+  → Call MemoryRegistry.updateRoot(merkle_root, da_tx_hash) on 0G Chain
   → On-chain state: agent_address → {merkle_root, block_number, da_tx_hash, timestamp}
 
 Returns to agent: WriteReceipt { blob_id, merkle_root, da_tx_hash, chain_tx_hash }
@@ -98,7 +98,7 @@ Step 2: SIMILARITY SEARCH
   → Returns: top-k {blob_id, score} pairs
 
 Step 3: FETCH + DECRYPT
-  → Download matched blobs from 0g Storage
+  → Download matched blobs from 0G Storage
   → Decrypt client-side with HKDF-derived key
 
 Step 4: PROOF GENERATION
@@ -107,12 +107,12 @@ Step 4: PROOF GENERATION
   → Proof = {leaf, siblings[], root, path}
 
 Step 5: DA LOG
-  → Post via gRPC to 0g DA:
+  → Post via gRPC to 0G DA:
     { type: "memory_read", agent_id, query_hash, blob_ids, scores, merkle_root }
   → Returns: da_read_tx (immutable retrieval log)
 
 Step 6: CHAIN CHECK
-  → Fetch current Merkle root from MemoryRegistry on 0g Chain
+  → Fetch current Merkle root from MemoryRegistry on 0G Chain
   → Cross-check with local root
 
 Returns to agent: (results, QueryProof {
@@ -139,7 +139,7 @@ Step 5: Generate structured report:
     total_reads: M,
     operations: [...],
     eu_ai_act_compliant: true,
-    verifiable_by: "anyone with 0g Chain + DA access"
+    verifiable_by: "anyone with 0G Chain + DA access"
   }
 Step 6: Export as JSON (report.to_json())
 ```
@@ -148,7 +148,7 @@ Step 6: Export as JSON (report.to_json())
 
 ## 4. Component Architecture
 
-### 4.1 Smart Contracts (deployed on 0g Galileo Testnet, Chain ID 16602)
+### 4.1 Smart Contracts (deployed on 0G Galileo Testnet, Chain ID 16602)
 
 **MemoryRegistry** — `0xEDF95D9CFb157F5F38C1125B7DFB3968E05d2c4b`
 ```
@@ -173,17 +173,17 @@ hasAccess(address owner, address agent, bytes32 blobId) → bool
 ```
 ogmem/
 ├── memory.py      VerifiableMemory — main public API + LangChain BaseMemory impl
-├── storage.py     0g Storage client (Node.js bridge → @0gfoundation/0g-ts-sdk)
+├── storage.py     0G Storage client (Node.js bridge → @0gfoundation/0g-ts-sdk)
 ├── compute.py     Embedding client (sentence-transformers local → OpenAI fallback)
-├── da.py          0g DA client (gRPC to local Docker DA node)
-├── chain.py       0g Chain client (MemoryRegistry + MemoryNFT via web3.py)
+├── da.py          0G DA client (gRPC to local Docker DA node)
+├── chain.py       0G Chain client (MemoryRegistry + MemoryNFT via web3.py)
 ├── merkle.py      SHA-256 Merkle tree — add leaves, generate + verify proofs
 ├── proof.py       Data classes: WriteReceipt, QueryProof, AuditReport
 ├── encryption.py  AES-256-GCM encrypt/decrypt, HKDF-SHA256 key derivation
 └── config.py      Network config, contract addresses, ABIs
 
 proto/
-├── disperser.proto        gRPC proto for 0g DA disperser
+├── disperser.proto        gRPC proto for 0G DA disperser
 ├── disperser_pb2.py       generated protobuf stubs (run: make proto)
 └── disperser_pb2_grpc.py  generated gRPC stubs
 
@@ -221,27 +221,27 @@ POST /memory/nft/mint            → mint memory NFT
 ```
 Component             Provider                        Status
 ─────────────────────────────────────────────────────────────────────
-0g Chain (EVM)        Galileo Testnet, Chain ID 16602  ✅ Live
-0g Storage            indexer-storage-testnet-turbo    ✅ Live (Node.js bridge)
-0g DA                 Local Docker node, gRPC :51001   ✅ Live (docker-compose)
+0G Chain (EVM)        Galileo Testnet, Chain ID 16602  ✅ Live
+0G Storage            indexer-storage-testnet-turbo    ✅ Live (Node.js bridge)
+0G DA                 Local Docker node, gRPC :51001   ✅ Live (docker-compose)
 Embeddings            sentence-transformers (local)    ✅ Live (dim=384)
 AES-256-GCM encrypt   Python cryptography library      ✅ Live
 Merkle proofs         Pure Python (in-SDK)             ✅ Live
-MemoryRegistry        Deployed on 0g Chain             ✅ Live
-MemoryNFT             Deployed on 0g Chain             ✅ Live
+MemoryRegistry        Deployed on 0G Chain             ✅ Live
+MemoryNFT             Deployed on 0G Chain             ✅ Live
 ```
 
 ---
 
-## 5. Why Each 0g Component Is Necessary
+## 5. Why Each 0G Component Is Necessary
 
-| Component | What it does in 0g Mem | Why you can't replace it |
+| Component | What it does in 0G Mem | Why you can't replace it |
 |---|---|---|
-| **0g Storage** | Stores memory blobs content-addressed | Immutable + decentralized — no central party can alter or delete |
-| **0g DA** | Posts operation logs (reads + writes) via gRPC | High-throughput, cheap, permanent — anchors the audit trail without bloating L1 |
-| **0g Chain** | Smart contract anchors Merkle roots on-chain | Anyone can independently verify state without trusting 0g Mem as a company |
+| **0G Storage** | Stores memory blobs content-addressed | Immutable + decentralized — no central party can alter or delete |
+| **0G DA** | Posts operation logs (reads + writes) via gRPC | High-throughput, cheap, permanent — anchors the audit trail without bloating L1 |
+| **0G Chain** | Smart contract anchors Merkle roots on-chain | Anyone can independently verify state without trusting 0G Mem as a company |
 
-Using all three together: no single party (including 0g Mem the company) can tamper with
+Using all three together: no single party (including 0G Mem the company) can tamper with
 what an agent knew. The proof is independently verifiable by anyone.
 
 ---
@@ -250,10 +250,10 @@ what an agent knew. The proof is independently verifiable by anyone.
 
 | Property | How it's achieved |
 |---|---|
-| **Tamper-evident writes** | Blob content is hash-addressed in 0g Storage; changing content changes hash |
-| **Immutable audit log** | DA commitments are permanent (gRPC → 0g DA node → dispersed to DA nodes) |
+| **Tamper-evident writes** | Blob content is hash-addressed in 0G Storage; changing content changes hash |
+| **Immutable audit log** | DA commitments are permanent (gRPC → 0G DA node → dispersed to DA nodes) |
 | **Non-repudiable reads** | Every retrieval logged to DA before result returned to agent |
-| **Third-party verifiability** | Anyone with 0g Chain + DA access can replay and verify the full history |
+| **Third-party verifiability** | Anyone with 0G Chain + DA access can replay and verify the full history |
 | **Memory poisoning resistance** | Writes require agent's private key signature; others can't write to your memory |
 | **Historical queries** | On-chain history of Merkle roots allows proving state at any past block |
 | **Client-side encryption** | Key derived from wallet via HKDF-SHA256 — server never sees plaintext |
@@ -262,12 +262,12 @@ what an agent knew. The proof is independently verifiable by anyone.
 
 ## 7. EU AI Act Article 12 Compliance Mapping
 
-| Article 12 Requirement | How 0g Mem satisfies it |
+| Article 12 Requirement | How 0G Mem satisfies it |
 |---|---|
-| "Automatic logging of operations" | Every read/write posted to 0g DA automatically |
-| "Traceability throughout the AI system's lifetime" | Immutable chain of Merkle roots on 0g Chain |
+| "Automatic logging of operations" | Every read/write posted to 0G DA automatically |
+| "Traceability throughout the AI system's lifetime" | Immutable chain of Merkle roots on 0G Chain |
 | "Logs cannot be modified" | DA layer is append-only; on-chain state is immutable |
-| "Appropriate retention periods" | 0g Storage has configurable persistence guarantees |
+| "Appropriate retention periods" | 0G Storage has configurable persistence guarantees |
 | "Logging of input data used" | Read log includes query hash + retrieved blob IDs + similarity scores |
 
 ---
@@ -301,10 +301,10 @@ compatible with LangChain's `BaseMemory` interface.
 | Layer | Technology |
 |---|---|
 | SDK | Python 3.10+ |
-| Smart contracts | Solidity 0.8.x (0g Chain, EVM-compatible) |
+| Smart contracts | Solidity 0.8.x (0G Chain, EVM-compatible) |
 | Contract interaction | web3.py |
 | Storage bridge | Node.js + @0gfoundation/0g-ts-sdk |
-| DA transport | gRPC (grpcio) → local 0g DA Docker node |
+| DA transport | gRPC (grpcio) → local 0G DA Docker node |
 | API server | FastAPI + uvicorn |
 | Merkle tree | Custom SHA-256 implementation |
 | Embeddings | sentence-transformers/all-MiniLM-L6-v2 (local, dim=384) |
@@ -317,9 +317,9 @@ compatible with LangChain's `BaseMemory` interface.
 
 ### v0.1.0 (current)
 - `VerifiableMemory` SDK — `add()`, `query()`, `verify_proof()`, `export_audit()`
-- 0g Storage integration via @0gfoundation/0g-ts-sdk Node.js bridge
-- 0g DA integration — gRPC submission to local Docker DA node
-- 0g Chain integration — MemoryRegistry + MemoryNFT deployed on Galileo testnet
+- 0G Storage integration via @0gfoundation/0g-ts-sdk Node.js bridge
+- 0G DA integration — gRPC submission to local Docker DA node
+- 0G Chain integration — MemoryRegistry + MemoryNFT deployed on Galileo testnet
 - AES-256-GCM client-side encryption, HKDF-SHA256 key derivation
 - SHA-256 Merkle tree — inclusion proof generation and verification
 - LangChain BaseMemory drop-in

@@ -1,23 +1,23 @@
-"""Network configuration for 0g Mem SDK."""
+"""Network configuration for 0G Mem SDK."""
 
 from dataclasses import dataclass
 
 
 @dataclass
 class NetworkConfig:
-    # 0g Chain (EVM)
+    # 0G Chain (EVM)
     chain_id: int
     rpc_url: str
     explorer_url: str
 
-    # 0g Storage
+    # 0G Storage
     storage_indexer_rpc: str
     flow_contract_address: str
 
-    # 0g DA
+    # 0G DA
     da_disperser_rpc: str  # gRPC endpoint
 
-    # 0g Serving (inference)
+    # 0G Serving (inference)
     serving_broker_url: str
 
     # Deployed contracts
@@ -26,7 +26,7 @@ class NetworkConfig:
 
 
 NETWORKS = {
-    # 0g Galileo Testnet (v3) — current active testnet
+    # 0G Galileo Testnet (v3) — current active testnet
     "0g-testnet": NetworkConfig(
         chain_id=16602,
         rpc_url="https://evmrpc-testnet.0g.ai",
@@ -41,7 +41,7 @@ NETWORKS = {
         memory_registry_address="0xEDF95D9CFb157F5F38C1125B7DFB3968E05d2c4b",
         memory_nft_address="0x70ad85300f522A41689954a4153744BF6E57E488",
     ),
-    # 0g Newton Testnet (v2) — kept for reference
+    # 0G Newton Testnet (v2) — kept for reference
     "0g-newton": NetworkConfig(
         chain_id=16600,
         rpc_url="https://evmrpc-testnet.0g.ai",
@@ -53,7 +53,7 @@ NETWORKS = {
     ),
 }
 
-# MemoryNFT contract ABI — ERC-7857 inspired, deployed on 0g Chain
+# MemoryNFT contract ABI — ERC-7857 inspired, deployed on 0G Chain
 MEMORY_NFT_ABI = [
     {
         "inputs": [],

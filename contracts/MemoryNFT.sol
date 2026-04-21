@@ -16,17 +16,17 @@ pragma solidity ^0.8.20;
  * Access control (memory shards):
  *   - Owner grants any agent FULL access or access to specific blob IDs (shards)
  *   - Grants are revocable on-chain at any time
- *   - Any app can verify agent access without trusting 0g Mem
+ *   - Any app can verify agent access without trusting 0G Mem
  *
  * Compatible with ERC-7857 (Intelligent Asset NFT) concept.
  *
- * Deployed on: 0g Chain (EVM-compatible, Chain ID: 16601)
+ * Deployed on: 0G Chain (EVM-compatible, Chain ID: 16601)
  */
 contract MemoryNFT {
 
     // ─── ERC-721 minimal implementation ────────────────────────────────────
 
-    string public name = "0g Mem";
+    string public name = "0G Mem";
     string public symbol = "ZGMEM";
 
     mapping(uint256 => address) private _owners;
@@ -187,7 +187,7 @@ contract MemoryNFT {
      *
      * @param owner  The memory owner's wallet address.
      * @param agent  The agent being checked.
-     * @param blobId The 0g Storage blob ID (content hash) to check.
+     * @param blobId The 0G Storage blob ID (content hash) to check.
      */
     function hasAccess(
         address owner,

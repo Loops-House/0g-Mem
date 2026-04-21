@@ -1,4 +1,4 @@
-"""0g Mem — Verifiable, Private, Owned Agent Memory on 0g Labs."""
+"""0G Mem — Verifiable, Private, Owned Agent Memory on 0G Labs."""
 
 from .memory import VerifiableMemory, SyncReport
 from .proof import AuditReport, QueryProof, WriteReceipt, MemoryType

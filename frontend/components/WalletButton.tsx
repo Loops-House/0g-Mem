@@ -27,7 +27,7 @@ export default function WalletButton() {
         )}
       >
         <AlertTriangle className="w-4 h-4" />
-        Switch to 0g Testnet
+        Switch to 0G Testnet
       </button>
     );
   }

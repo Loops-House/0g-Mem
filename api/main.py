@@ -1,4 +1,4 @@
-"""0g Mem REST API. Run with: uvicorn api.main:app --reload --port 8000"""
+"""0G Mem REST API. Run with: uvicorn api.main:app --reload --port 8000"""
 
 import logging
 import os
@@ -17,16 +17,16 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("0g Mem API starting")
+    logger.info("0G Mem API starting")
     logger.info("Registry: %s", os.environ.get("MEMORY_REGISTRY_ADDRESS", "not set"))
     logger.info("NFT:      %s", os.environ.get("MEMORY_NFT_ADDRESS", "not set"))
     yield
-    logger.info("0g Mem API shutting down")
+    logger.info("0G Mem API shutting down")
 
 
 app = FastAPI(
-    title="0g Mem API",
-    description="Verifiable, encrypted, user-owned AI memory on 0g Labs",
+    title="0G Mem API",
+    description="Verifiable, encrypted, user-owned AI memory on 0G Labs",
     version="0.1.0",
     lifespan=lifespan,
 )
@@ -45,8 +45,8 @@ app.include_router(nft.router)
 @app.get("/")
 def root():
     return {
-        "name": "0g Mem API",
+        "name": "0G Mem API",
         "version": "0.1.0",
-        "description": "Verifiable, encrypted, user-owned AI memory on 0g Labs",
+        "description": "Verifiable, encrypted, user-owned AI memory on 0G Labs",
         "docs": "/docs",
     }

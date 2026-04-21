@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 0g Storage bridge for Python SDK.
+ * 0G Storage bridge for Python SDK.
  *
  * Called by ogmem/storage.py via subprocess.
  * Prints a single JSON line to stdout.
@@ -46,7 +46,7 @@ async function upload() {
     if (treeErr) throw new Error('merkleTree: ' + treeErr);
     const rootHash = tree.rootHash();
 
-    // 0g Chain requires min 2 Gwei gas tip; set 4 Gwei to be safe
+    // 0G Chain requires min 2 Gwei gas tip; set 4 Gwei to be safe
     const uploadOpts = { tags: '0x', finalityRequired: true, taskSize: 1, expectedReplica: 1, skipTx: false, fee: 0n };
     const nodeOpts = { gasPrice: BigInt('4000000000') };
     const [result, uploadErr] = await indexer.upload(memData, rpcUrl, signer, uploadOpts, undefined, nodeOpts);

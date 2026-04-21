@@ -18,7 +18,7 @@ export interface AuthHeaders {
  */
 export function buildAuthMessage(walletAddress: string): string {
   const timestamp = Date.now();
-  return `0g Mem authentication | Wallet: ${walletAddress} | Timestamp: ${timestamp}`;
+  return `0G Mem authentication | Wallet: ${walletAddress} | Timestamp: ${timestamp}`;
 }
 
 /**

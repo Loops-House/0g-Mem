@@ -142,7 +142,7 @@ def _format_tools(tool_names: list[str]) -> str:
 
 # ── Command handlers ───────────────────────────────────────────────────────────
 
-async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def cmd_start(update: Update, _context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
     inference_note = (
         "\n\n⚠️ *Inference not configured* — set `ZEROG\\_SERVICE\\_URL` \\+ `ZEROG\\_API\\_KEY` for 0G Compute\\."
@@ -162,7 +162,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 
-async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def cmd_help(update: Update, _context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(
         "*0G Bot Commands*\n\n"
         "/start — welcome\n"
@@ -179,7 +179,7 @@ async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 
-async def cmd_memory(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def cmd_memory(update: Update, _context: ContextTypes.DEFAULT_TYPE) -> None:
     uid = update.effective_user.id
     rt = _get_runtime(uid)
     stats = rt.memory.stats()
@@ -251,7 +251,7 @@ async def cmd_remember(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
     )
 
 
-async def cmd_forget(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def cmd_forget(update: Update, _context: ContextTypes.DEFAULT_TYPE) -> None:
     uid = update.effective_user.id
     rt = _get_runtime(uid)
     entries = rt.memory._entries
@@ -276,7 +276,7 @@ async def cmd_forget(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         await update.message.reply_text("Could not delete\\.", parse_mode=ParseMode.MARKDOWN_V2)
 
 
-async def cmd_clear(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def cmd_clear(update: Update, _context: ContextTypes.DEFAULT_TYPE) -> None:
     uid = update.effective_user.id
     rt = _get_runtime(uid)
     rt.reset_history()
@@ -286,10 +286,11 @@ async def cmd_clear(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 
-async def cmd_sync(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def cmd_sync(update: Update, _context: ContextTypes.DEFAULT_TYPE) -> None:
     uid = update.effective_user.id
     rt = _get_runtime(uid)
     await update.message.reply_text("Syncing memories from 0G Storage…")
+
     try:
         report = rt.memory.pull_index()
         if report.added > 0:
@@ -307,7 +308,7 @@ async def cmd_sync(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         await update.message.reply_text(f"Sync error: {_escape_md(str(e))}", parse_mode=ParseMode.MARKDOWN_V2)
 
 
-async def cmd_stats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def cmd_stats(update: Update, _context: ContextTypes.DEFAULT_TYPE) -> None:
     uid = update.effective_user.id
     rt = _get_runtime(uid)
     stats = rt.memory.stats()
@@ -339,7 +340,7 @@ _TUI_REDIRECT_KEYWORDS = (
 )
 
 
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def handle_message(update: Update, _context: ContextTypes.DEFAULT_TYPE) -> None:
     uid = update.effective_user.id
     text = update.message.text or ""
 

@@ -1,4 +1,4 @@
-"""0g DA client — posts read/write commitments via gRPC."""
+"""0G DA client — posts read/write commitments via gRPC."""
 
 import hashlib
 import json
@@ -30,7 +30,7 @@ def _try_import_grpc():
 
 class DAClient:
     """
-    Client for 0g DA — the immutable audit log layer.
+    Client for 0G DA — the immutable audit log layer.
 
     Every write commitment: {agent_id, blob_id, merkle_root, timestamp}
     Every read commitment:  {agent_id, query_hash, blob_ids, scores, merkle_root, timestamp}
@@ -68,7 +68,7 @@ class DAClient:
         timestamp: Optional[int] = None,
     ) -> str:
         """
-        Post a write commitment to 0g DA.
+        Post a write commitment to 0G DA.
 
         Returns da_tx_hash — unique identifier for this commitment.
         """
@@ -95,7 +95,7 @@ class DAClient:
         timestamp: Optional[int] = None,
     ) -> str:
         """
-        Post a full agent turn trace to 0g DA.
+        Post a full agent turn trace to 0G DA.
 
         Stores hashes of user message and reply (not plaintext) for privacy.
         Returns da_tx_hash.
@@ -136,7 +136,7 @@ class DAClient:
         timestamp: Optional[int] = None,
     ) -> str:
         """
-        Post a read commitment to 0g DA.
+        Post a read commitment to 0G DA.
 
         This is the immutable proof that a retrieval happened.
         Returns da_tx_hash.
@@ -176,7 +176,7 @@ class DAClient:
 
     def fetch_agent_history(self, agent_id: str) -> list[dict]:
         """
-        Fetch all commitments for a given agent_id from 0g DA.
+        Fetch all commitments for a given agent_id from 0G DA.
         Used to reconstruct the full audit timeline.
         """
         history = [

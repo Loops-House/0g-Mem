@@ -1,6 +1,5 @@
-"""0g Chain client — anchors Merkle roots via MemoryRegistry on 0g Chain (EVM, Chain ID 16600)."""
+"""0G Chain client — anchors Merkle roots via MemoryRegistry on 0G Chain (EVM, Chain ID 16600)."""
 
-import time
 from dataclasses import dataclass
 from typing import Optional
 
@@ -19,7 +18,7 @@ class MemoryState:
 
 
 class ChainClient:
-    """Interacts with MemoryRegistry and MemoryNFT contracts on 0g Chain."""
+    """Interacts with MemoryRegistry and MemoryNFT contracts on 0G Chain."""
 
     def __init__(
         self,
@@ -29,7 +28,7 @@ class ChainClient:
         nft_contract_address: Optional[str] = None,
     ):
         self.w3 = Web3(Web3.HTTPProvider(rpc_url))
-        # 0g Chain uses POA — needed for correct block header parsing
+        # 0G Chain uses POA — needed for correct block header parsing
         self.w3.middleware_onion.inject(ExtraDataToPOAMiddleware, layer=0)
 
         self.account = self.w3.eth.account.from_key(private_key)
@@ -57,9 +56,9 @@ class ChainClient:
 
         fn = self.registry.functions.updateRoot(merkle_root_bytes, da_tx_hash_bytes)
         gas = fn.estimate_gas({"from": self.account.address})
-        # 0g Chain min tip is 2 Gwei; use 4 Gwei to be safe
+        # 0G Chain min tip is 2 Gwei; use 4 Gwei to be safe
         gas_price = max(self.w3.eth.gas_price, 4_000_000_000)
-        tx = fn.build_transaction({
+        tx = fn.build_transaction({  # type: ignore[arg-type]
             "from": self.account.address,
             "nonce": self.w3.eth.get_transaction_count(self.account.address, "pending"),
             "gas": int(gas * 1.3),  # 30% buffer
@@ -70,7 +69,7 @@ class ChainClient:
         tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
         receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
 
-        return receipt.transactionHash.hex()
+        return receipt["transactionHash"].hex()
 
     def get_latest_root(self, agent_address: str) -> Optional[MemoryState]:
         try:
@@ -126,9 +125,10 @@ class ChainClient:
     def mint_memory_nft(self) -> str:
         """Mint the caller's memory NFT. Returns chain_tx_hash."""
         self._require_nft()
+        assert self.nft is not None
         fn = self.nft.functions.mint()
         gas = fn.estimate_gas({"from": self.account.address})
-        tx = fn.build_transaction({
+        tx = fn.build_transaction({  # type: ignore[arg-type]
             "from": self.account.address,
             "nonce": self.w3.eth.get_transaction_count(self.account.address, "pending"),
             "gas": int(gas * 1.3),
@@ -137,11 +137,12 @@ class ChainClient:
         signed = self.account.sign_transaction(tx)
         tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
         receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
-        return receipt.transactionHash.hex()
+        return receipt["transactionHash"].hex()
 
     def grant_access(self, agent_address: str, shard_blob_ids: list[str] | None = None) -> str:
         """Grant agent access on-chain. Pass shard_blob_ids for scoped access. Returns chain_tx_hash."""
         self._require_nft()
+        assert self.nft is not None
         shard_bytes = []
         if shard_blob_ids:
             shard_bytes = [
@@ -153,7 +154,7 @@ class ChainClient:
             shard_bytes,
         )
         gas = grant_fn.estimate_gas({"from": self.account.address})
-        tx = grant_fn.build_transaction({
+        tx = grant_fn.build_transaction({  # type: ignore[arg-type]
             "from": self.account.address,
             "nonce": self.w3.eth.get_transaction_count(self.account.address, "pending"),
             "gas": int(gas * 1.3),
@@ -162,16 +163,17 @@ class ChainClient:
         signed = self.account.sign_transaction(tx)
         tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
         receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
-        return receipt.transactionHash.hex()
+        return receipt["transactionHash"].hex()
 
     def revoke_access(self, agent_address: str) -> str:
         """Revoke all on-chain access for an agent. Returns chain_tx_hash."""
         self._require_nft()
+        assert self.nft is not None
         revoke_fn = self.nft.functions.revokeAccess(
             Web3.to_checksum_address(agent_address),
         )
         gas = revoke_fn.estimate_gas({"from": self.account.address})
-        tx = revoke_fn.build_transaction({
+        tx = revoke_fn.build_transaction({  # type: ignore[arg-type]
             "from": self.account.address,
             "nonce": self.w3.eth.get_transaction_count(self.account.address, "pending"),
             "gas": int(gas * 1.3),
@@ -180,11 +182,12 @@ class ChainClient:
         signed = self.account.sign_transaction(tx)
         tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
         receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=60)
-        return receipt.transactionHash.hex()
+        return receipt["transactionHash"].hex()
 
     def check_access(self, owner_address: str, agent_address: str, blob_id: str) -> bool:
         """Return True if agent_address has on-chain access to blob_id."""
         self._require_nft()
+        assert self.nft is not None
         blob_bytes = bytes.fromhex(blob_id.removeprefix("0x").zfill(64))
         try:
             return self.nft.functions.hasAccess(
@@ -198,6 +201,7 @@ class ChainClient:
     def get_memory_token_id(self, owner_address: str) -> int:
         """Get the memory NFT token ID for a wallet (0 if not minted)."""
         self._require_nft()
+        assert self.nft is not None
         try:
             return self.nft.functions.getTokenId(
                 Web3.to_checksum_address(owner_address)

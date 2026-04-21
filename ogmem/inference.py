@@ -1,4 +1,4 @@
-"""0G Compute inference client — OpenAI-compatible API wrapping Qwen 2.5 7B on 0g testnet."""
+"""0G Compute inference client — OpenAI-compatible API wrapping Qwen 2.5 7B on 0G testnet."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from typing import Iterator, Optional
 logger = logging.getLogger(__name__)
 
 
-# Default model available on 0g Compute testnet
+# Default model available on 0G Compute testnet
 _DEFAULT_MODEL = "Qwen/Qwen2.5-7B-Instruct"
 
 

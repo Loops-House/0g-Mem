@@ -1,4 +1,4 @@
-"""VerifiableMemory: cryptographically provable agent memory on 0g."""
+"""VerifiableMemory: cryptographically provable agent memory on 0G."""
 
 import hashlib
 import json
@@ -107,7 +107,7 @@ class MemorySession:
 
 
 class VerifiableMemory:
-    """Agent memory stored on 0g Storage with Merkle proofs anchored on-chain."""
+    """Agent memory stored on 0G Storage with Merkle proofs anchored on-chain."""
 
     def __init__(
         self,
@@ -174,7 +174,7 @@ class VerifiableMemory:
         metadata: dict | None = None,
     ) -> WriteReceipt:
         """
-        Store a memory entry on 0g Storage and anchor its Merkle root on-chain.
+        Store a memory entry on 0G Storage and anchor its Merkle root on-chain.
 
         Args:
             text: Memory content.
@@ -828,7 +828,7 @@ class VerifiableMemory:
         return True
 
     def export_audit(self, from_block: int = 0, to_block: int = -1) -> AuditReport:
-        """Reconstruct the agent's full memory history from 0g DA commitments."""
+        """Reconstruct the agent's full memory history from 0G DA commitments."""
         history = self._da.fetch_agent_history(self.agent_id)
         history.sort(key=lambda x: x.get("timestamp", 0))
 

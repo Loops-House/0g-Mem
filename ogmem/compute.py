@@ -25,7 +25,7 @@ def _get_local_model():
 
 
 class ComputeClient:
-    """Embedding and similarity search. Local sentence-transformers, with 0g Serving / OpenAI fallback."""
+    """Embedding and similarity search. Local sentence-transformers, with 0G Serving / OpenAI fallback."""
 
     EMBEDDING_DIM = 384  # all-MiniLM-L6-v2 dimension
 
@@ -35,7 +35,7 @@ class ComputeClient:
         self.session = requests.Session()
 
     def embed(self, text: str) -> list[float]:
-        """Return a normalized embedding vector. Falls back to 0g Serving then OpenAI."""
+        """Return a normalized embedding vector. Falls back to 0G Serving then OpenAI."""
         errors = []
 
         try:

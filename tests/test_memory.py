@@ -1,4 +1,4 @@
-"""Integration tests for VerifiableMemory using mock 0g clients (no network required)."""
+"""Integration tests for VerifiableMemory using mock 0G clients (no network required)."""
 
 import sys
 import os
@@ -13,7 +13,7 @@ from ogmem.merkle import MerkleTree
 
 
 class MockStorage:
-    """Simulates 0g Storage — in-memory blob store."""
+    """Simulates 0G Storage — in-memory blob store."""
     def __init__(self):
         self._store = {}
 
@@ -44,7 +44,7 @@ class MockStorage:
 
 
 class MockCompute:
-    """Simulates 0g Compute — deterministic local embeddings."""
+    """Simulates 0G Compute — deterministic local embeddings."""
     EMBEDDING_DIM = 64  # smaller for tests
 
     def embed(self, text: str) -> list[float]:
@@ -78,7 +78,7 @@ class MockCompute:
 
 
 class MockDA:
-    """Simulates 0g DA — in-memory commitment log."""
+    """Simulates 0G DA — in-memory commitment log."""
     def __init__(self):
         self._log = []
 
@@ -134,7 +134,7 @@ class MockDA:
 
 
 class MockChain:
-    """Simulates 0g Chain MemoryRegistry — in-memory state."""
+    """Simulates 0G Chain MemoryRegistry — in-memory state."""
     def __init__(self):
         self._history = []
         self.agent_address = "0xMockAgent1234"
@@ -185,10 +185,10 @@ def make_memory(agent_id="test-agent") -> VerifiableMemory:
         private_key="0x" + "a" * 64,
         network="0g-testnet",
         encrypted=False,
-        _storage=MockStorage(),
-        _compute=MockCompute(),
-        _da=MockDA(),
-        _chain=MockChain(),
+        _storage=MockStorage(),  # type: ignore[arg-type]
+        _compute=MockCompute(),  # type: ignore[arg-type]
+        _da=MockDA(),  # type: ignore[arg-type]
+        _chain=MockChain(),  # type: ignore[arg-type]
     )
 
 
@@ -235,6 +235,7 @@ class TestWrite:
         mem = make_memory()
         receipt = mem.add("anchor test")
         state = mem._chain.get_latest_root(mem._chain.agent_address)
+        assert state is not None
         assert state.merkle_root == receipt.merkle_root
 
 
@@ -257,7 +258,7 @@ class TestQuery:
         mem.add("user prefers formal English responses")
         mem.add("user is located in New York")
         mem.add("user works in finance")
-        results, proof = mem.query("what does the user prefer?")
+        results, _proof = mem.query("what does the user prefer?")
         assert len(results) > 0
         # The formal preference entry should be among top results
         assert any("formal" in r or "prefer" in r for r in results)
@@ -265,7 +266,7 @@ class TestQuery:
     def test_proof_has_merkle_proofs(self):
         mem = make_memory()
         mem.add("test memory for proof")
-        results, proof = mem.query("test memory")
+        _results, proof = mem.query("test memory")
         assert len(proof.merkle_proofs) > 0
         assert proof.merkle_root
         assert proof.da_read_tx
@@ -444,7 +445,7 @@ class TestEndToEnd:
             ("How long is confidentiality?", "Confidentiality"),
         ]
 
-        for question, expected_keyword in questions:
+        for question, _expected_keyword in questions:
             results, proof = mem.query(question, top_k=1)
             assert len(results) > 0
             assert mem.verify_proof(proof), f"Proof failed for: {question}"
@@ -526,7 +527,7 @@ class TestLLMDistillation:
             "memory_type": "episodic", "timestamp": int(time.time()) - 40 * 86400,
             "retrieval_count": 0, "last_retrieved": 0, "stale": False, "weight": 1.0,
         })
-        def failing_llm(prompt):
+        def failing_llm(_prompt):
             raise RuntimeError("LLM unavailable")
 
         report = mem.distill(older_than_days=30, inference_fn=failing_llm)
@@ -617,7 +618,7 @@ class TestMemorySummary:
             "timestamp": int(time.time()), "retrieval_count": 0,
             "last_retrieved": 0, "stale": False, "weight": 1.0,
         })
-        def bad_fn(p):
+        def bad_fn(_p):
             raise RuntimeError("no")
 
         result = mem.summary(inference_fn=bad_fn)

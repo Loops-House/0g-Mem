@@ -74,7 +74,7 @@ export default function VerifyPage() {
         <div>
           <h1 className="text-xl font-semibold text-white">Verify Proof</h1>
           <p className="text-sm text-muted mt-0.5">
-            Paste a QueryProof JSON to verify retrieval integrity on 0g Chain.
+            Paste a QueryProof JSON to verify retrieval integrity on 0G Chain.
           </p>
         </div>
       </div>

@@ -1,4 +1,4 @@
-"""0g Storage client — upload/download blobs via the Node.js SDK bridge."""
+"""0G Storage client — upload/download blobs via the Node.js SDK bridge."""
 
 import json
 import pathlib
@@ -11,6 +11,7 @@ _LOCAL_CACHE_MAX = 2000
 
 class StorageError(Exception):
     """Raised when a 0G Storage operation fails with no fallback."""
+
 
 import requests
 from web3 import Web3
@@ -78,7 +79,7 @@ MARKET_ABI = [
 
 
 class StorageClient:
-    """Uploads and downloads memory blobs via the 0g FixedPriceFlow protocol."""
+    """Uploads and downloads memory blobs via the 0G FixedPriceFlow protocol."""
 
     def __init__(
         self,
@@ -143,7 +144,7 @@ class StorageClient:
             return None
 
     def exists(self, blob_id: str) -> bool:
-        """Return True if the blob exists in 0g Storage.
+        """Return True if the blob exists in 0G Storage.
 
         The indexer returns the blob content on success (no 'code' key),
         and {"code": <non-zero>, "message": "..."} on failure.

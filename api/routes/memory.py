@@ -42,7 +42,7 @@ def add_memory(
     x_signature: Optional[str] = Header(default=None),
     x_auth_message: Optional[str] = Header(default=None),
 ):
-    """Write a memory entry to 0g Storage and anchor its Merkle root on-chain."""
+    """Write a memory entry to 0G Storage and anchor its Merkle root on-chain."""
     memory = _auth(x_wallet_address, x_signature, x_auth_message)
     try:
         receipt = memory.add(body.text, memory_type=body.memory_type, metadata=body.metadata)
@@ -163,7 +163,7 @@ def verify_proof(
         valid = memory.verify_proof(proof)
         return VerifyResponse(
             valid=valid,
-            message="Proof is valid — retrieval verified on 0g Chain." if valid
+            message="Proof is valid — retrieval verified on 0G Chain." if valid
                     else "Proof is invalid — data may have been tampered with.",
         )
     except Exception as e:

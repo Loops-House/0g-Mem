@@ -1,4 +1,4 @@
-"""Pydantic request / response models for the 0g Mem API."""
+"""Pydantic request / response models for the 0G Mem API."""
 
 from typing import Optional
 from pydantic import BaseModel

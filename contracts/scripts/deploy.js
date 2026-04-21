@@ -1,5 +1,5 @@
 /**
- * Deploy MemoryRegistry + MemoryNFT to 0g Chain.
+ * Deploy MemoryRegistry + MemoryNFT to 0G Chain.
  *
  * Usage:
  *   npx hardhat run contracts/scripts/deploy.js --network 0g-testnet
@@ -37,7 +37,7 @@ async function main() {
   const nftAddress = await nft.getAddress();
   console.log("✅ MemoryNFT deployed to:      ", nftAddress);
 
-  console.log("\n   Network: 0g Galileo Testnet (Chain ID 16601)");
+  console.log("\n   Network: 0G Galileo Testnet (Chain ID 16601)");
   console.log("   Explorer (Registry):", `https://chainscan-galileo.0g.ai/address/${registryAddress}`);
   console.log("   Explorer (NFT):     ", `https://chainscan-galileo.0g.ai/address/${nftAddress}`);
 

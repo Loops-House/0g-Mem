@@ -1,4 +1,4 @@
-"""Proof data structures for 0g Mem."""
+"""Proof data structures for 0G Mem."""
 
 import json
 import time
@@ -21,10 +21,10 @@ class MemoryType(str, Enum):
 class WriteReceipt:
     """Returned after a successful memory write."""
     agent_id: str
-    blob_id: str           # 0g Storage content hash (root hash)
+    blob_id: str           # 0G Storage content hash (root hash)
     merkle_root: str       # Updated Merkle root after this write
-    da_tx_hash: str        # 0g DA transaction hash (immutable write log)
-    chain_tx_hash: str     # 0g Chain transaction hash (root anchor)
+    da_tx_hash: str        # 0G DA transaction hash (immutable write log)
+    chain_tx_hash: str     # 0G Chain transaction hash (root anchor)
     memory_type: str = MemoryType.EPISODIC.value
     timestamp: int = field(default_factory=lambda: int(time.time()))
 
@@ -34,7 +34,7 @@ class WriteReceipt:
 
 @dataclass
 class QueryProof:
-    """Cryptographic proof of a memory retrieval event, verifiable against 0g Chain + DA."""
+    """Cryptographic proof of a memory retrieval event, verifiable against 0G Chain + DA."""
     agent_id: str
     query_hash: str            # sha256(query_text)
     blob_ids: list[str]
@@ -104,5 +104,5 @@ class AuditReport:
             f"Period: block {self.from_block} → {self.to_block}\n"
             f"Writes: {self.total_writes} | Reads: {self.total_reads}\n"
             f"EU AI Act Article 12 Compliant: {self.eu_ai_act_compliant}\n"
-            f"Verifiable by: anyone with 0g Chain + DA access"
+            f"Verifiable by: anyone with 0G Chain + DA access"
         )

@@ -1,5 +1,5 @@
 """
-Merkle tree implementation for 0g Mem.
+Merkle tree implementation for 0G Mem.
 Provides inclusion proofs: prove that a blob_id was in memory at a given root.
 """
 

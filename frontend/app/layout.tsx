@@ -4,11 +4,11 @@ import Web3Provider from "@/providers/Web3Provider";
 import Navbar from "@/components/Navbar";
 
 export const metadata: Metadata = {
-  title: "0g Mem — Verifiable AI Memory",
+  title: "0G Mem — Verifiable AI Memory",
   description:
-    "Provable. Pluggable. Owned by you. On-chain verifiable AI memory powered by 0g Labs.",
+    "Provable. Pluggable. Owned by you. On-chain verifiable AI memory powered by 0G Labs.",
   icons: {
-    icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%238B5CF6'/><text x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='14' font-weight='bold' font-family='Inter,sans-serif'>0g</text></svg>",
+    icon: "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%238B5CF6'/><text x='50%25' y='55%25' dominant-baseline='middle' text-anchor='middle' fill='white' font-size='14' font-weight='bold' font-family='Inter,sans-serif'>0G</text></svg>",
   },
 };
 

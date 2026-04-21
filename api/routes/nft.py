@@ -16,7 +16,7 @@ def mint_nft(
     x_signature: Optional[str] = Header(default=None),
     x_auth_message: Optional[str] = Header(default=None),
 ):
-    """Mint the caller's memory NFT on 0g Chain. One per wallet."""
+    """Mint the caller's memory NFT on 0G Chain. One per wallet."""
     if not x_wallet_address:
         raise HTTPException(status_code=401, detail="X-Wallet-Address header is required.")
     if not x_signature:

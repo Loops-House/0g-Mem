@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * api.ts — Fully-typed fetch client for the 0g Mem FastAPI backend.
+ * api.ts — Fully-typed fetch client for the 0G Mem FastAPI backend.
  * All authenticated endpoints accept X-Wallet-Address, X-Signature, X-Auth-Message headers.
  */
 

@@ -10,7 +10,7 @@ module.exports = {
     },
   },
   networks: {
-    // 0g Galileo Testnet (v3, Chain ID 16601)
+    // 0G Galileo Testnet (v3, Chain ID 16601)
     "0g-testnet": {
       url: "https://evmrpc-testnet.0g.ai",
       chainId: 16602,
@@ -19,7 +19,7 @@ module.exports = {
         : [],
       gasPrice: "auto",
     },
-    // 0g Newton Testnet (v2, Chain ID 16600) — kept for reference
+    // 0G Newton Testnet (v2, Chain ID 16600) — kept for reference
     "0g-newton": {
       url: "https://evmrpc-testnet.0g.ai",
       chainId: 16600,

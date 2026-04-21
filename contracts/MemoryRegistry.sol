@@ -5,21 +5,21 @@ pragma solidity ^0.8.20;
  * @title MemoryRegistry
  * @notice On-chain registry for AI agent memory state roots.
  *
- * Every time an AI agent writes a memory (via 0g Mem SDK), a new Merkle root
+ * Every time an AI agent writes a memory (via 0G Mem SDK), a new Merkle root
  * is anchored here. This creates an immutable, chronological history of the
  * agent's memory state — verifiable by anyone, forever.
  *
- * Combined with 0g DA (where full operation logs are stored), this contract
+ * Combined with 0G DA (where full operation logs are stored), this contract
  * enables EU AI Act Article 12 compliant audit trails for AI agents.
  *
- * Deployed on: 0g Chain Newton Testnet (Chain ID: 16600)
+ * Deployed on: 0G Chain Newton Testnet (Chain ID: 16600)
  */
 contract MemoryRegistry {
 
     struct MemoryState {
         bytes32 merkleRoot;   // Merkle root of all memory blobs at this point
         uint256 blockNumber;  // Block when this root was anchored
-        bytes32 daTxHash;     // 0g DA transaction hash (full operation log)
+        bytes32 daTxHash;     // 0G DA transaction hash (full operation log)
         uint256 timestamp;    // Unix timestamp
     }
 
@@ -40,7 +40,7 @@ contract MemoryRegistry {
     /**
      * @notice Anchor a new Merkle root after a memory write.
      * @param merkleRoot  New Merkle root of the agent's full memory set.
-     * @param daTxHash    Hash of the 0g DA commitment containing the full write log.
+     * @param daTxHash    Hash of the 0G DA commitment containing the full write log.
      */
     function updateRoot(bytes32 merkleRoot, bytes32 daTxHash) external {
         MemoryState memory state = MemoryState({

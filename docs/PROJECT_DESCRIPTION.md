@@ -1,25 +1,25 @@
-# 0g Mem — Project Description
+# 0G Mem — Project Description
 
 ---
 
 ## High-Level Overview
 
-**0g Mem** is a cryptographically verifiable, encrypted, and user-owned memory layer for AI agents built on 0g Labs.
+**0G Mem** is a cryptographically verifiable, encrypted, and user-owned memory layer for AI agents built on 0G Labs.
 
-When an AI agent "remembers" something, that memory is typically a black box — you can't prove what the agent knew, what it retrieved, when it did so, or whether it was tampered with. 0g Mem treats every read and write as a cryptographic event: encrypted, Merkle-proven, immutably logged, and anchored on-chain using 0g's full infrastructure stack (Storage + DA + Chain).
+When an AI agent "remembers" something, that memory is typically a black box — you can't prove what the agent knew, what it retrieved, when it did so, or whether it was tampered with. 0G Mem treats every read and write as a cryptographic event: encrypted, Merkle-proven, immutably logged, and anchored on-chain using 0G's full infrastructure stack (Storage + DA + Chain).
 
-Nobody — not the app, not the cloud provider, not 0g itself — can alter what the agent knew or retrieved.
+Nobody — not the app, not the cloud provider, not 0G itself — can alter what the agent knew or retrieved.
 
 ### Three problems it solves
 
 **1. Auditability**
-Enterprises and regulators (EU AI Act Article 12) need to know exactly what an AI agent retrieved before making a decision. Today there is no cryptographic answer to "what did this agent know?" 0g Mem makes every retrieval event provable — the query, the results, the scores, the memory state — all immutably logged and independently verifiable.
+Enterprises and regulators (EU AI Act Article 12) need to know exactly what an AI agent retrieved before making a decision. Today there is no cryptographic answer to "what did this agent know?" 0G Mem makes every retrieval event provable — the query, the results, the scores, the memory state — all immutably logged and independently verifiable.
 
 **2. Ownership**
-Memory lives in a platform's database. When you leave the platform, your agent's memory vanishes. 0g Mem ties memory ownership to your wallet via an ERC-7857-style NFT — your memory follows your wallet, forever. Transfer the NFT, transfer all memory ownership.
+Memory lives in a platform's database. When you leave the platform, your agent's memory vanishes. 0G Mem ties memory ownership to your wallet via an ERC-7857-style NFT — your memory follows your wallet, forever. Transfer the NFT, transfer all memory ownership.
 
 **3. Access Control**
-In multi-agent systems (orchestrator + specialist agents), memory sharing is all-or-nothing. 0g Mem introduces **memory shards**: grant a medical agent access only to your health records, and a finance agent only to your transaction history — all enforced on-chain, revocable at any time.
+In multi-agent systems (orchestrator + specialist agents), memory sharing is all-or-nothing. 0G Mem introduces **memory shards**: grant a medical agent access only to your health records, and a finance agent only to your transaction history — all enforced on-chain, revocable at any time.
 
 ---
 
@@ -33,10 +33,10 @@ receipt = memory.add("user prefers formal tone")
 
 1. The text is embedded into a 384-dimensional semantic vector using `sentence-transformers/all-MiniLM-L6-v2` (runs locally, no API key needed)
 2. The data is encrypted with AES-256-GCM using a key derived from your wallet's private key via HKDF-SHA256 — the server never sees plaintext
-3. The encrypted blob is uploaded to 0g Storage; its content hash becomes the `blob_id`
+3. The encrypted blob is uploaded to 0G Storage; its content hash becomes the `blob_id`
 4. The `blob_id` is added to a Merkle tree; the new root is computed
-5. A write commitment `{agent_id, blob_id, merkle_root, timestamp}` is posted to 0g DA — an immutable, append-only audit log
-6. The Merkle root is anchored on 0g Chain via the `MemoryRegistry` smart contract
+5. A write commitment `{agent_id, blob_id, merkle_root, timestamp}` is posted to 0G DA — an immutable, append-only audit log
+6. The Merkle root is anchored on 0G Chain via the `MemoryRegistry` smart contract
 7. A `WriteReceipt` is returned: `{blob_id, merkle_root, da_tx_hash, chain_tx_hash}`
 
 ### Querying memory
@@ -48,8 +48,8 @@ results, proof = memory.query("what tone does the user prefer?")
 1. The query is embedded into a vector (same local model)
 2. Cosine similarity search over stored embedding vectors finds the top-k most relevant memories
 3. A Merkle inclusion proof is generated for each retrieved blob
-4. A read commitment `{agent_id, query_hash, blob_ids, scores, merkle_root}` is posted to 0g DA
-5. The current on-chain Merkle root is fetched from 0g Chain to cross-check
+4. A read commitment `{agent_id, query_hash, blob_ids, scores, merkle_root}` is posted to 0G DA
+5. The current on-chain Merkle root is fetched from 0G Chain to cross-check
 6. A `QueryProof` is returned alongside results — anyone can verify it independently
 
 ### Verifying a proof
@@ -60,7 +60,7 @@ is_valid = memory.verify_proof(proof)  # stateless — anyone can call this
 
 - Checks each blob's Merkle inclusion proof is valid against the claimed root
 - Checks the claimed root matches the on-chain anchor at the recorded block
-- No trust in 0g Mem required — only 0g Chain and 0g DA
+- No trust in 0G Mem required — only 0G Chain and 0G DA
 
 ### Ownership & access control
 
@@ -78,7 +78,7 @@ memory.grant_access("0xDoctorAgent", shard_blob_ids=[receipt.blob_id])
 # Revoke anytime — immediate on-chain effect
 memory.revoke_access("0xAgentAddress")
 
-# Anyone can check access without trusting 0g Mem
+# Anyone can check access without trusting 0G Mem
 memory.check_access("0xAgent", blob_id)
 ```
 
@@ -126,7 +126,7 @@ All SDK functionality is exposed over HTTP for language-agnostic integration:
 | Client-side encryption | Server sees only ciphertext. Key is derived from wallet — no key management service needed |
 | Wallet = identity | No accounts, no usernames. Your private key is your identity and your encryption key |
 | Merkle tree over all blobs | Proves the state of memory at any point in time with O(log n) proof size |
-| 0g DA for audit log | Immutable, ordered, permissionless — no trusted third party |
+| 0G DA for audit log | Immutable, ordered, permissionless — no trusted third party |
 | Local embeddings (sentence-transformers) | Free, fast, runs on-device. No API key required |
 | NFT shard access model | Per-blob access control enforced on-chain, no redesign of storage layer needed |
 | Persistent local index | Embeddings cached locally so queries are fast without re-downloading blobs |
@@ -173,12 +173,12 @@ All SDK functionality is exposed over HTTP for language-agnostic integration:
 ┌──────────────┐ ┌────────────┐ ┌───────────┐ ┌─────────────────────┐
 │ ogmem/compute  │ │ogmem/storage │ │  ogmem/da   │ │    ogmem/chain        │
 │              │ │            │ │           │ │                     │
-│ sentence-    │ │ 0g Storage │ │  0g DA    │ │  MemoryRegistry     │
+│ sentence-    │ │ 0G Storage │ │  0G DA    │ │  MemoryRegistry     │
 │ transformers │ │ Indexer    │ │ Disperser │ │  (Merkle root       │
 │ (local,      │ │ REST API   │ │ REST API  │ │   anchor)           │
 │  dim=384)    │ │            │ │           │ │                     │
 │              │ │ Flow Ctr.  │ │           │ │  MemoryNFT          │
-│ + 0g Serving │ │ (on-chain  │ │           │ │  (ERC-7857 NFT      │
+│ + 0G Serving │ │ (on-chain  │ │           │ │  (ERC-7857 NFT      │
 │ + OpenAI     │ │  submit)   │ │           │ │   ownership +       │
 │ (fallbacks)  │ │            │ │           │ │   shard ACL)        │
 └──────────────┘ └────────────┘ └───────────┘ └─────────────────────┘
@@ -186,7 +186,7 @@ All SDK functionality is exposed over HTTP for language-agnostic integration:
                                ┌────────────────────────┘
                                ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│                    0g CHAIN  (EVM, Chain ID 16602)                  │
+│                    0G CHAIN  (EVM, Chain ID 16602)                  │
 │                                                                     │
 │  MemoryRegistry  0xEDF95D9CFb157F5F38C1125B7DFB3968E05d2c4b         │
 │  ──────────────────────────────────────────────────────────────     │
@@ -216,13 +216,13 @@ User text
    ├──► encrypt(AES-256-GCM, HKDF key derived from wallet private key)
    │         │
    │         ▼
-   │    ciphertext blob ──► 0g Storage ──► blob_id (content hash)
+   │    ciphertext blob ──► 0G Storage ──► blob_id (content hash)
    │
    ├──► MerkleTree.add_leaf(blob_id) ──► new merkle_root
    │
-   ├──► 0g DA ──► da_tx_hash  (immutable write log entry)
+   ├──► 0G DA ──► da_tx_hash  (immutable write log entry)
    │
-   └──► 0g Chain ──► MemoryRegistry.updateRoot(merkle_root, da_tx_hash)
+   └──► 0G Chain ──► MemoryRegistry.updateRoot(merkle_root, da_tx_hash)
                            │
                            ▼
                      WriteReceipt {
@@ -248,7 +248,7 @@ Query text
    │
    ├──► ChainClient.get_latest_root() ──► on-chain chain_block
    │
-   ├──► 0g DA ──► da_read_tx  (immutable read log entry)
+   ├──► 0G DA ──► da_read_tx  (immutable read log entry)
    │
    └──► QueryProof {
           query_hash,       ← sha256(query_text), hashed for privacy
@@ -277,12 +277,12 @@ Step 2 — On-chain verification:
   check returned root == proof.merkle_root  ✓
 
 Step 3 — DA verification (optional):
-  fetch da_read_tx from 0g DA
+  fetch da_read_tx from 0G DA
   check payload contains correct agent_id, query_hash, blob_ids  ✓
 
 All three pass → the retrieval is proven to have happened,
 with that exact memory state, at that exact block.
-No trust in 0g Mem required — only 0g Chain and 0g DA.
+No trust in 0G Mem required — only 0G Chain and 0G DA.
 ```
 
 ### Encryption key derivation
@@ -323,7 +323,7 @@ Owner wallet
                                 ← all shard grants also cleared
 
 Any app can call hasAccess(owner, agent, blobId) on-chain.
-No trust in 0g Mem required.
+No trust in 0G Mem required.
 ```
 
 ### Module map
@@ -331,9 +331,9 @@ No trust in 0g Mem required.
 ```
 ogmem/
 ├── memory.py       VerifiableMemory — main public class, orchestrates all layers
-├── compute.py      Embedding generation (sentence-transformers → 0g Serving → OpenAI)
-├── storage.py      Blob upload/download via 0g Storage indexer REST API + Flow contract
-├── da.py           Write/read commitment logging to 0g DA disperser
+├── compute.py      Embedding generation (sentence-transformers → 0G Serving → OpenAI)
+├── storage.py      Blob upload/download via 0G Storage indexer REST API + Flow contract
+├── da.py           Write/read commitment logging to 0G DA disperser
 ├── chain.py        MemoryRegistry + MemoryNFT contract interaction (web3.py)
 ├── merkle.py       Binary Merkle tree — add leaves, generate + verify proofs
 ├── proof.py        Data classes: WriteReceipt, QueryProof, AuditReport, Operation
@@ -356,22 +356,22 @@ examples/
 └── legal_assistant.py   End-to-end demo — legal contract Q&A with verifiable proofs
 ```
 
-### Deployed contracts (0g Galileo Testnet, Chain ID 16602)
+### Deployed contracts (0G Galileo Testnet, Chain ID 16602)
 
 | Contract | Address |
 |----------|---------|
 | MemoryRegistry | `0xEDF95D9CFb157F5F38C1125B7DFB3968E05d2c4b` |
 | MemoryNFT | `0x70ad85300f522A41689954a4153744BF6E57E488` |
-| Flow (0g) | `0x22E03a6A89B950F1c82ec5e74F8eCa321a105296` |
+| Flow (0G) | `0x22E03a6A89B950F1c82ec5e74F8eCa321a105296` |
 
 ### Infrastructure dependencies
 
 | Component | Provider | Status |
 |-----------|----------|--------|
-| EVM Chain | 0g Galileo Testnet (Chain ID 16602) | ✅ Fully working |
+| EVM Chain | 0G Galileo Testnet (Chain ID 16602) | ✅ Fully working |
 | Semantic embeddings | sentence-transformers/all-MiniLM-L6-v2 (local, dim=384) | ✅ Fully working |
 | Merkle proofs | Pure Python (in-SDK, SHA-256) | ✅ Fully working |
 | AES-256-GCM encryption | Python `cryptography` + HKDF-SHA256 | ✅ Fully working |
-| NFT access control | MemoryNFT deployed on 0g Chain | ✅ Fully working |
-| 0g Storage | `indexer-storage-testnet-turbo.0g.ai` via @0gfoundation/0g-ts-sdk (Node.js bridge) | ✅ Fully working |
-| 0g DA | Local Docker node, gRPC localhost:51001 (no public disperser on Galileo) | ✅ Fully working |
+| NFT access control | MemoryNFT deployed on 0G Chain | ✅ Fully working |
+| 0G Storage | `indexer-storage-testnet-turbo.0g.ai` via @0gfoundation/0g-ts-sdk (Node.js bridge) | ✅ Fully working |
+| 0G DA | Local Docker node, gRPC localhost:51001 (no public disperser on Galileo) | ✅ Fully working |
