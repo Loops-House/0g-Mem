@@ -1,10 +1,20 @@
 # 0G Mem
 
-> The memory layer of a trustless agent runtime — decentralised, verifiable, and owned by you.
+> A decentralized AI agent runtime and memory stack — verifiable, portable, and owned by you.
 
-0G Mem is building toward a fully trustless AI agent runtime: think Hermes Agent meets OpenClaw, but on decentralised infrastructure. Any agent runs in a sandboxed environment where every inference and memory access is cryptographically provable. No single party — including us — controls agent state or execution.
+0G Mem is built to break vendor lock-in in AI agents. Most AI tools today tightly couple memory, inference, and execution to their own infrastructure — your context lives on their servers, your agent runs on their compute, and switching costs are high. We decoupled all three layers and rebuilt them on open, verifiable infrastructure using 0G Labs, so you actually own what your agent knows and does.
 
-We're building bottom-up, starting with the memory layer. Every memory read and write is encrypted client-side, logged to 0G DA, Merkle-proven, and anchored on 0G Chain — so any agent's memory history can be verified independently, without trusting the provider.
+---
+
+## How it works
+
+0G Mem is structured around three layers:
+
+**Memory** — Your agent's context is encrypted client-side using your wallet key, stored on 0G Storage, and Merkle-anchored on 0G Chain. The memory is dynamic: it strengthens with retrieval, decays with disuse, and episodic history gradually distills into compact semantic facts over time. Every change is provably recorded on-chain.
+
+**Agent Runtime** — Inference runs through 0G Compute, not a third-party API. Every execution — memory state, tool calls, decisions — is logged to 0G DA, creating a fully transparent and auditable trail of everything your agent does.
+
+**Pluggability** — The memory layer exposes an MCP (Model Context Protocol) server, so any MCP-compatible client — Claude Desktop, Cursor, or any agent framework — integrates with zero code changes. Interfaces include a Next.js web app, a Telegram bot, and a terminal TUI, all connecting to the same unified, user-owned memory store.
 
 ---
 
@@ -12,14 +22,13 @@ We're building bottom-up, starting with the memory layer. Every memory read and 
 
 Most AI memory providers (Mem0, Zep, LangMem, Supermemory) store your agent's memory on their servers. They have full access to it per their T&C. Memory is ephemeral, siloed, and platform-owned — it dies between sessions and cannot be ported across frameworks.
 
-0G Mem fixes this:
-
 | Problem | 0G Mem solution |
 |---|---|
 | Memory dies between sessions | Persistent, content-addressed storage on 0G |
 | Provider owns and can read your memory | AES-256-GCM encrypted client-side — provider never sees plaintext |
 | No way to verify memory wasn't tampered | SHA-256 Merkle proofs anchored on 0G Chain |
 | Memory locked to one agent/framework | LangChain drop-in, AutoGen/CrewAI compatible SDK |
+| No audit trail of agent decisions | Every execution logged to 0G DA — fully verifiable |
 | No control over who accesses agent memory | On-chain shard-level access control via MemoryNFT |
 
 ---
