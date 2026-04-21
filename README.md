@@ -14,7 +14,7 @@
 
 **Agent Runtime** — Inference runs through 0G Compute, not a third-party API. Every execution — memory state, tool calls, decisions — is logged to 0G DA, creating a fully transparent and auditable trail of everything your agent does.
 
-**Pluggability** — The memory layer exposes an MCP (Model Context Protocol) server, so any MCP-compatible client — Claude Desktop, Cursor, or any agent framework — integrates with zero code changes. Interfaces include a Next.js web app, a Telegram bot, and a terminal TUI, all connecting to the same unified, user-owned memory store.
+**Pluggability** — The memory layer exposes an MCP (Model Context Protocol) server, so any MCP-compatible client — Claude Desktop, Cursor, or any agent framework — integrates with zero code changes. Interfaces include a Telegram bot and a terminal TUI, all connecting to the same unified, user-owned memory store.
 
 ---
 
@@ -27,7 +27,6 @@ Most AI memory providers (Mem0, Zep, LangMem, Supermemory) store your agent's me
 | Memory dies between sessions | Persistent, content-addressed storage on 0G |
 | Provider owns and can read your memory | AES-256-GCM encrypted client-side — provider never sees plaintext |
 | No way to verify memory wasn't tampered | SHA-256 Merkle proofs anchored on 0G Chain |
-| Memory locked to one agent/framework | LangChain drop-in, AutoGen/CrewAI compatible SDK |
 | No audit trail of agent decisions | Every execution logged to 0G DA — fully verifiable |
 | No control over who accesses agent memory | On-chain shard-level access control via MemoryNFT |
 
@@ -38,7 +37,7 @@ Most AI memory providers (Mem0, Zep, LangMem, Supermemory) store your agent's me
 ```
 ┌─────────────────────────────────────────────────────────┐
 │                     Your Agent / LLM                     │
-│              (LangChain, AutoGen, CrewAI, custom)        │
+│         (Claude Desktop, Cursor, Telegram, TUI)          │
 └──────────────────────┬──────────────────────────────────┘
                        │  SDK call: memory.add() / memory.query()
                        ▼
@@ -125,138 +124,102 @@ hasAccess(address owner, address agent, bytes32 blobId) → bool
 
 ---
 
-## One-click deploy (Telegram bot)
+## Getting started
 
-The fastest way to try 0G Mem — deploy your own Telegram bot with verifiable memory in under 5 minutes.
-
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.com/deploy/8vaCZl)
-
-Or use the **[guided onboarding →](https://frontend-kjsq7myjq-violinas-projects.vercel.app/deploy)** (step-by-step: wallet → BotFather → 0G Compute → deploy).
-
-Each user deploys their own instance — you are the operator and the user. Your `AGENT_KEY` controls your memory. Nobody else has custody.
-
----
-
-## Quickstart (SDK)
+### Prerequisites
 
 ```bash
 git clone https://github.com/violinadoley/0g-Mem
 cd 0g-mem
 pip install -e .
 cp .env.example .env
-# Fill in AGENT_KEY in .env
 ```
 
-```python
-import os
-from ogmem import VerifiableMemory
+Fill in `.env`:
 
-memory = VerifiableMemory(
-    agent_id="my-agent",
-    private_key=os.environ["AGENT_KEY"],
-    network="0g-testnet",
-)
-
-# Write
-receipt = memory.add("user prefers formal tone")
-print(receipt.blob_id)        # content address on 0G Storage
-print(receipt.chain_tx_hash)  # Merkle root anchored on 0G Chain
-print(receipt.da_tx_hash)     # write commitment on 0G DA
-
-# Query
-results, proof = memory.query("what does the user prefer?")
-print(results)                # ['user prefers formal tone']
-print(proof.merkle_root)      # matches on-chain anchor
-
-# Verify
-valid = memory.verify_proof(proof)
-print(valid)                  # True
+```env
+AGENT_KEY=0x_your_wallet_private_key
+ZEROG_SERVICE_URL=https://<provider>.0g.ai
+ZEROG_API_KEY=app-sk-your_secret_here
 ```
 
----
-
-## LangChain drop-in
-
-```python
-from langchain.chains import ConversationChain
-from ogmem import VerifiableMemory
-
-memory = VerifiableMemory(
-    agent_id="my-agent",
-    private_key=os.environ["AGENT_KEY"],
-    network="0g-testnet",
-)
-chain = ConversationChain(llm=llm, memory=memory)
-# memory persists across sessions, encrypted, verifiable on-chain
-```
-
----
-
-## NFT ownership and access control
-
-```python
-memory.mint_memory_nft()
-
-# Grant full access to an agent
-memory.grant_access("0xAgentWalletAddress")
-
-# Grant shard-level access (specific memory blobs only)
-receipt = memory.add("I take metformin daily")
-memory.grant_access("0xDoctorAgentAddress", shard_blob_ids=[receipt.blob_id])
-
-# Revoke anytime — single on-chain transaction
-memory.revoke_access("0xAgentWalletAddress")
-```
-
----
-
-## Audit export
-
-```python
-report = memory.export_audit()
-print(report.summary())
-# Total writes: 12 | Total reads: 8 | EU AI Act compliant: True
-
-with open("audit_report.json", "w") as f:
-    f.write(report.to_json())
-# Full Merkle root history + DA tx hashes — EU AI Act Article 12 compliant
-```
-
----
-
-## REST API
+To get `ZEROG_SERVICE_URL` and `ZEROG_API_KEY`, set up a ledger on 0G Compute:
 
 ```bash
-python -m uvicorn api.main:app --port 8000 --env-file .env
+zerog-compute-cli ledger create --amount 3
+zerog-compute-cli inference acknowledge-provider --provider <PROVIDER>
+zerog-compute-cli inference transfer --provider <PROVIDER> --amount 1
+zerog-compute-cli inference get-secret --provider <PROVIDER>   # → copy app-sk-*
 ```
-
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/memory/{agent_id}/add` | Write encrypted memory entry |
-| POST | `/memory/{agent_id}/query` | Semantic search with proof |
-| GET | `/memory/{agent_id}/state` | Current on-chain Merkle state |
-| GET | `/memory/{agent_id}/audit` | Full audit report (JSON) |
-| POST | `/memory/{agent_id}/verify` | Verify a QueryProof |
-| POST | `/memory/{agent_id}/grant` | Grant on-chain agent access |
-| POST | `/memory/{agent_id}/revoke` | Revoke on-chain agent access |
-
-Auth via headers: `X-Wallet-Address`, `X-Signature`, `X-Auth-Message`
 
 ---
 
-## Frontend dashboard
+## Interfaces
+
+### Terminal TUI
+
+Install the TUI dependency and launch:
 
 ```bash
-cd frontend
-npm install
-npm run dev   # http://localhost:3000
+pip install -e ".[tui]"
+python -m tui
 ```
 
-Connect MetaMask with 0G Galileo Testnet added. Dashboard includes:
-- Memory explorer (add / query)
-- Audit report viewer
-- Access control (grant / revoke)
-- Proof verification
+One-shot mode (no interactive UI):
+
+```bash
+python -m tui "what did we discuss last session?"
+```
+
+Use `--role` to set the agent persona:
+
+```bash
+python -m tui --role researcher
+```
+
+---
+
+### Telegram Bot
+
+1. Create a bot via [@BotFather](https://t.me/BotFather) — `/newbot` → copy the token
+2. Add to `.env`:
+   ```env
+   TELEGRAM_BOT_TOKEN=your_token_here
+   ```
+3. Run locally:
+   ```bash
+   pip install -e ".[bot]"
+   python -m telegram_bot
+   ```
+
+Or deploy in one click:
+
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.com/deploy/8vaCZl)
+
+Each user deploys their own instance — your `AGENT_KEY` controls your memory, nobody else has custody.
+
+---
+
+### Claude Desktop / Cursor (MCP)
+
+Add the following to your Claude Desktop config (`~/Library/Application Support/Claude/claude_desktop_config.json` on Mac):
+
+```json
+{
+  "mcpServers": {
+    "0g-mem": {
+      "command": "python",
+      "args": ["-m", "ogmem.mcp_server"],
+      "cwd": "/path/to/0g-mem",
+      "env": {
+        "AGENT_KEY": "0x_your_private_key"
+      }
+    }
+  }
+}
+```
+
+For Cursor, add the same block under `mcpServers` in your Cursor MCP settings. Restart the app — Claude / Cursor will now have access to your encrypted 0G memory as a tool.
 
 ---
 
@@ -286,6 +249,7 @@ ogmem/              # Core Python SDK
   da.py             # 0G DA client (gRPC)
   chain.py          # 0G Chain interaction (web3.py)
   compute.py        # Embeddings + cosine similarity
+  mcp_server.py     # MCP server (Claude Desktop, Cursor)
   config.py         # Network configs + contract ABIs
 
 contracts/          # Solidity smart contracts
@@ -293,20 +257,10 @@ contracts/          # Solidity smart contracts
   MemoryNFT.sol       # ERC-7857-inspired access control
 
 api/                # FastAPI REST server
-  routes/memory.py  # 7 memory endpoints
-  routes/nft.py     # NFT mint endpoint
-
-frontend/           # Next.js 14 dashboard (wagmi + viem)
-  app/deploy/       # One-click onboarding page
-waitlist/           # Next.js 14 waitlist site (Supabase + Resend)
 telegram_bot/       # Telegram bot (python-telegram-bot)
 runtime/            # AgentRuntime + built-in tools
 tui/                # Terminal UI (Textual)
-Dockerfile.bot      # Docker image for Telegram bot deploy
-railway.toml        # Railway one-click deploy config
-render.yaml         # Render one-click deploy config
-tests/              # 43+ pytest tests (mock clients, no network required)
-examples/           # legal_assistant.py demo
+tests/              # pytest tests (mock clients, no network required)
 docs/               # Architecture + pitch docs
 ```
 
@@ -318,3 +272,11 @@ docs/               # Architecture + pitch docs
 - **ZK proofs** — replace Merkle proofs with ZK proofs for private verification
 - **Multi-agent coordination** — shared verifiable memory across agent swarms
 - **Group Telegram bots** — shared memory for team agents with per-member access grants
+
+---
+
+## Docs
+
+- [Architecture](docs/ARCHITECTURE.md)
+- [Project Description](docs/PROJECT_DESCRIPTION.md)
+- [Pitch Deck](docs/PITCH_DECK.md)
