@@ -273,10 +273,3 @@ docs/               # Architecture + pitch docs
 - **Multi-agent coordination** — shared verifiable memory across agent swarms
 - **Group Telegram bots** — shared memory for team agents with per-member access grants
 
----
-
-## Docs
-
-- [Architecture](docs/ARCHITECTURE.md)
-- [Project Description](docs/PROJECT_DESCRIPTION.md)
-- [Pitch Deck](docs/PITCH_DECK.md)
